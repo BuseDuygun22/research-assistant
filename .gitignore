@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+data/*
+!data/.gitkeep
+mlruns/
+mlartifacts/
+.pytest_cache/
+.mypy_cache/
