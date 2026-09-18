@@ -1,0 +1,16 @@
+# Keep the build context small: the image installs from pyproject, so the local
+# virtualenv, caches and git history are dead weight (and .env must never ship).
+.venv/
+.git/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+src/*.egg-info/
+.env
+.eval/
+data/*
+!data/.gitkeep
+mlruns/
+mlartifacts/

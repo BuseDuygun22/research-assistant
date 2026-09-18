@@ -1,0 +1,86 @@
+# The quality gate (Sude).
+#
+# Separate from ci_S.yml because it is slow, it can cost money, and it answers a
+# different question. CI asks "does it run"; this asks "did it get better".
+#
+# Runs on a schedule and on demand, never on every push. A gate that runs on
+# every push is either cheap and meaningless or expensive and skipped.
+
+name: eval-gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      split:
+        description: "dev, or test to report a final number (test must not be used to choose)"
+        default: dev
+        type: choice
+        options: [dev, test]
+      allow_degraded:
+        description: "Allow the stub backend — plumbing check only, results not publishable"
+        default: true
+        type: boolean
+  schedule:
+    - cron: "0 3 * * 1"  # Mondays, against the real backend and a real judge
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[serve,agents,eval,judge,dev]"
+
+      - name: Restore the baseline run
+        uses: actions/cache@v4
+        with:
+          path: .eval/baseline.json
+          key: eval-baseline-${{ github.ref_name }}
+
+      - name: Run the gate
+        env:
+          # Scheduled runs use a real judge; manual runs default to the stub so a
+          # plumbing check never costs anything.
+          RA_JUDGE_BACKEND: ${{ github.event_name == 'schedule' && 'anthropic' || 'stub' }}
+          RA_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          mkdir -p .eval
+          ARGS="--split ${{ inputs.split || 'dev' }} --out .eval/current.json"
+          if [ "${{ inputs.allow_degraded }}" = "true" ]; then
+            ARGS="$ARGS --allow-degraded --allow-small"
+          fi
+          if [ -f .eval/baseline.json ]; then
+            ARGS="$ARGS --baseline .eval/baseline.json"
+          fi
+          set +e
+          python -m eval.run_gate_S $ARGS | tee .eval/report.txt
+          echo "GATE_EXIT=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
+          set -e
+
+      # 0 promote, 1 reject, 2 refused. A refusal is NOT a reject: it means the
+      # question could not be asked — degraded backend, stamp mismatch, too few
+      # queries — and must not be read as a quality signal in either direction.
+      - name: Interpret the exit code
+        run: |
+          case "$GATE_EXIT" in
+            0) echo "PROMOTE" ;;
+            1) echo "REJECT — a metric regressed or nothing cleared the effect floor"; exit 1 ;;
+            2) echo "REFUSED — the gate declined to produce a verdict; see the report"; exit 1 ;;
+            *) echo "unexpected exit $GATE_EXIT"; exit 1 ;;
+          esac
+
+      - name: Publish the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: .eval/
+
+      - name: Promote the baseline
+        if: success() && github.ref_name == 'main'
+        run: cp .eval/current.json .eval/baseline.json

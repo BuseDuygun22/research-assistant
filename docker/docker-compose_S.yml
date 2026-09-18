@@ -1,0 +1,50 @@
+# Local stack (Sude).
+#
+# Two services because the split is the architecture: the tool logic is HTTP, the
+# MCP layer only translates protocol. Running them as separate containers keeps
+# that honest — if the MCP process can reach the logic only over the network,
+# nobody can quietly import it directly and erode the seam.
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/mcp_S.Dockerfile
+    environment:
+      RA_CORPUS_VERSION: ${RA_CORPUS_VERSION:-dev}
+      RA_JUDGE_BACKEND: ${RA_JUDGE_BACKEND:-stub}
+      RA_ANTHROPIC_API_KEY: ${RA_ANTHROPIC_API_KEY:-}
+      RA_TRACING_ENABLED: ${RA_TRACING_ENABLED:-false}
+      RA_TOOL_DEADLINE_SECONDS: ${RA_TOOL_DEADLINE_SECONDS:-10}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    volumes:
+      # Read-only: nothing in the serving path should ever write to the corpus.
+      - ../data:/app/data:ro
+
+  mcp:
+    build:
+      context: ..
+      dockerfile: docker/mcp_S.Dockerfile
+    command: ["python", "scripts/serve_S.py", "mcp"]
+    environment:
+      # The compose service name, not localhost — these are separate containers.
+      RA_RETRIEVAL_API_URL: http://api:8000
+      RA_MCP_TRANSPORT: ${RA_MCP_TRANSPORT:-stdio}
+    depends_on:
+      api:
+        # Waits for healthy, not merely started, so the MCP layer never
+        # advertises tools its backend cannot serve.
+        condition: service_healthy
+    stdin_open: true
+    tty: true

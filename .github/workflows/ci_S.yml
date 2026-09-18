@@ -1,0 +1,55 @@
+# Fast checks on every push (Sude).
+#
+# Everything here runs against the deterministic stub backend and stub LLM. That
+# is a design decision, not a limitation: a gate that costs money on every push is
+# a gate people learn to skip, and a non-deterministic judge makes a
+# promote/reject decision unreproducible. This job proves the plumbing works.
+# Quality numbers come from eval-gate_S.yml on a schedule.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[serve,agents,eval,dev]"
+
+      - name: Lint
+        run: ruff check src eval tests scripts
+
+      - name: Types
+        # A hard failure: the tree type-checks clean, so any new error is a
+        # regression. Buse's empty modules have nothing to check yet; when they
+        # land they join the same gate.
+        run: mypy src eval
+
+      - name: Tests
+        run: pytest -q
+
+      - name: Smoke the pipeline end to end
+        # Catches the failure unit tests cannot: every piece passing on its own
+        # while they do not fit together.
+        run: |
+          python - <<'PY'
+          from research_assistant.agents.graph_S import run
+          state, _ = run("How does reciprocal rank fusion work?")
+          assert state.is_terminal, state.outcome
+          assert state.budget.steps_used <= state.budget.max_steps
+          print("outcome:", state.outcome, "| steps:", len(state.decisions))
+          PY
