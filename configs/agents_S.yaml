@@ -1,0 +1,42 @@
+# Agent graph configuration (Sude).
+#
+# Values here are defaults that Settings reads; anything set via RA_* environment
+# variables wins. Kept in version control so a change to agent behaviour shows up
+# in a PR diff rather than in someone's shell history.
+
+budgets:
+  # Separate because the two revision types cost differently: a rewrite is one
+  # writer call; a re-retrieval is a retrieval round plus a rerank plus a writer
+  # call. A shared counter lets cheap rewrites starve the expensive repair.
+  max_rewrites: 3
+  max_re_retrievals: 2
+  # Global backstop. Catches a cycle that neither specific budget notices.
+  max_steps: 12
+
+context:
+  # The context-rot budget. Retrieve wide, deliver narrow: accuracy degrades with
+  # input length and is worst in the middle, and a single-topic paper corpus
+  # produces exactly the semantically-similar distractors that make it worse.
+  # Raising this is the easiest way to quietly make drafts worse.
+  writer_top_k: 5
+
+temperatures:
+  # By role, not one global setting - AS DESIGNED. Not applied on Claude 5
+  # models: sampling parameters are removed there and return a 400, so the real
+  # client sends none. Kept as the record of intent and for any older model.
+  # On Claude 5, run-to-run variance must be measured, not zeroed.
+  judge: 0.0       # a judge that varies cannot support a promote/reject decision
+  editor: 0.0      # applies a rubric; creativity here is a bug
+  writer: 0.3      # non-zero for readable prose, low because invention is the risk
+  researcher: 0.7  # the one place variety pays - output is a query, never draft text
+
+escalation:
+  # Ships at 0.0 - escalate on nothing - because a threshold on an uncalibrated
+  # confidence is not defensible. Raise once the judge is calibrated against
+  # Buse's qrels and we know what a given number means.
+  min_confidence: 0.0
+
+tools:
+  # A hung backend is the one failure an agent cannot observe: no error, no
+  # budget spent, no escalation. The deadline converts it into a routable error.
+  deadline_seconds: 10.0
