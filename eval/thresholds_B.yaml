@@ -1,0 +1,42 @@
+# Track A / Buse — promotion gate.
+# Sude's eval/run_gate_S.py reads this file and blocks the merge on a miss.
+# Do not tighten these without re-running notebook 06 and telling Sude.
+
+dataset:
+  queries: eval/datasets/queries_B.jsonl
+  qrels: eval/datasets/qrels_B.jsonl
+  min_queries: 40              # gate refuses to run on a smaller set
+
+# `min_effect` per metric: PROPOSED, not yet consumed. run_gate_S.py currently
+# takes one global `--min-effect` float; these per-metric values are the format
+# design_review_J.md Part 7 suggestion #10 agreed to move to, so Sude can wire
+# the gate's significance check (lower bootstrap CI bound >= min_effect) to read
+# per-metric numbers instead of one flag applied uniformly. Until she wires it,
+# `--min-effect` still governs. Values below are a starting point tied to the
+# `regression_tolerance` already agreed for each metric, not independently
+# validated — retune once real DPO-vs-baseline runs exist to check against.
+retrieval:
+  ndcg_at_5:
+    min: 0.55
+    regression_tolerance: 0.02   # a new model may not drop more than this vs the current champion
+    min_effect: 0.02
+  mrr:
+    min: 0.60
+    regression_tolerance: 0.02
+    min_effect: 0.02
+  recall_at_20:
+    min: 0.85                    # candidate-set ceiling: the reranker cannot recover what search missed
+    min_effect: 0.02
+  citation_precision:
+    min: 0.80
+    min_effect: 0.02
+
+generation:                      # owned by Sude, listed here so the gate has one config file
+  faithfulness:
+    min: 0.85
+  answer_relevance:
+    min: 0.80
+
+policy:
+  fail_on_missing_metric: true
+  compare_against: champion      # champion | fixed_thresholds_only

@@ -16,6 +16,26 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+GRADE_MEANING: dict[int, str] = {
+    3: "Directly answers the query; sufficient to support the answer on its own.",
+    2: "Meaningfully helps answer the query, but is incomplete or requires "
+    "additional context/evidence.",
+    1: "Related to the query/topic but does not actually help answer the "
+    "specific question.",
+    0: "Not relevant to answering the query.",
+}
+"""What `Qrel.grade` measures, and only that: *how useful is this chunk for
+answering this query?* Deliberately narrow -- correctness, completeness,
+confidence, citation quality, faithfulness and writing quality are each a real
+axis, but scoring them here would contaminate the one thing qrels are for.
+Retrieval quality (nDCG/MRR, this file) is graded before generation happens at
+all; whether the eventual answer is faithful or actually addresses the question
+is graded downstream, on the draft, by Sude's `FaithfulnessVerdict` /
+`AnswerVerdict` (`contracts/judge_J.py`) -- never by re-grading a chunk.
+
+Full labeling instructions, with examples per grade: `docs/qrels_labeling_guide_B.md`.
+"""
+
 
 class EvalQuery(BaseModel):
     """One held-out question, traceable back to the domain brief."""
@@ -41,7 +61,7 @@ class Qrel(BaseModel):
     query_id: str
     chunk_id: str
     grade: Literal[0, 1, 2, 3]
-    labeler: str = "buse"
+    labeler: str
 
 
 class EvalDataset(BaseModel):

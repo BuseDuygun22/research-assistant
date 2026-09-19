@@ -1,13 +1,24 @@
-"""Process-wide settings (JOINT).
+"""Config loading and process-wide settings (JOINT — both tracks read this file).
 
-Everything configurable is read here and nowhere else, so a CI run and a laptop
-run differ only by environment, never by an edited literal. Secrets come from the
-environment; corpus/model choices come from `configs/*.yaml` so they can be
-version-controlled and diffed in a PR.
+Two loading mechanisms live here, kept rather than collapsed into one because
+each side already builds on a different one and both are load-bearing:
+
+- `load_config(name)` / `resolve_path` / `secret` — Buse's ingestion, retrieval
+  and reranker code reads every YAML in `configs/` through these, cached, with
+  one `_FILES` registry so a path change happens in one place.
+- `Settings` / `get_settings()` — Sude's agents, judge, MCP server and eval gate
+  read environment-overridable settings (`RA_`-prefixed) through this, which
+  `load_config` cannot express (it has no notion of env override or defaults
+  outside a committed YAML file).
+
+Secrets come from the environment, never from the YAML files, so the configs
+stay committable and CI needs no decryption step.
 """
 
 from __future__ import annotations
 
+import functools
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -21,6 +32,67 @@ CONFIG_DIR = REPO_ROOT / "configs"
 DATA_DIR = REPO_ROOT / "data"
 EVAL_DIR = REPO_ROOT / "eval"
 
+_FILES: dict[str, Path] = {
+    "ingestion": CONFIG_DIR / "ingestion_B.yaml",
+    "retrieval": CONFIG_DIR / "retrieval_B.yaml",
+    "reranker": CONFIG_DIR / "reranker_B.yaml",
+    "agents": CONFIG_DIR / "agents_S.yaml",
+    "thresholds": REPO_ROOT / "eval" / "thresholds_B.yaml",
+}
+
+
+@functools.lru_cache(maxsize=None)
+def load_config(name: str) -> dict[str, Any]:
+    """Load one config by short name. Cached; call `load_config.cache_clear()` in tests."""
+    try:
+        path = _FILES[name]
+    except KeyError as exc:
+        raise KeyError(f"unknown config {name!r}, expected one of {sorted(_FILES)}") from exc
+    if not path.exists():
+        raise FileNotFoundError(f"config {name!r} not found at {path}")
+    with path.open(encoding="utf-8") as fh:
+        return yaml.safe_load(fh) or {}
+
+
+def resolve_path(rel: str | Path) -> Path:
+    """Turn a repo-relative path from a config file into an absolute Path."""
+    p = Path(rel)
+    return p if p.is_absolute() else (REPO_ROOT / p).resolve()
+
+
+def secret(name: str, *, required: bool = True) -> str | None:
+    """Read a secret from the environment. Never store these in configs/."""
+    value = os.environ.get(name)
+    if required and not value:
+        raise RuntimeError(f"missing required environment variable {name}")
+    return value
+
+
+def _default_embedding_model() -> str:
+    """The embedding model actually configured for ingestion, not a guessed default.
+
+    Design review open question (`docs/architecture_J.md` Sec.5, #3): until this
+    tracked the real config, `Settings.embedding_model` and `RetrievalResponse
+    .embedding_model` could silently disagree, and the eval gate's stamp check
+    compares them as free text — a wrong default would pass that check by
+    coincidence rather than by being right.
+    """
+    try:
+        return str(load_config("ingestion")["embed"]["model"])
+    except (FileNotFoundError, KeyError):
+        return "unknown"
+
+
+def _default_corpus_version() -> str:
+    """The vector store collection name, which already carries the "bump on
+    re-ingest" convention (`configs/retrieval_B.yaml`) — the closest real
+    identity marker committed today, rather than a second version counter that
+    could drift from it."""
+    try:
+        return str(load_config("retrieval")["vector_store"]["collection"])
+    except (FileNotFoundError, KeyError):
+        return "dev"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -29,9 +101,10 @@ class Settings(BaseSettings):
 
     # --- corpus / index identity -------------------------------------------
     corpus_version: str = Field(
-        "dev", description="Bump on any re-ingest that changes chunk boundaries."
+        default_factory=_default_corpus_version,
+        description="Bump on any re-ingest that changes chunk boundaries.",
     )
-    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_model: str = Field(default_factory=_default_embedding_model)
 
     # --- services -----------------------------------------------------------
     retrieval_api_url: str = Field(
@@ -112,7 +185,12 @@ class Settings(BaseSettings):
 
     def yaml_config(self, name: str) -> dict[str, Any]:
         """Load `configs/<name>.yaml`; missing file is an empty dict so a track
-        that has not landed its config yet does not break the other track."""
+        that has not landed its config yet does not break the other track.
+
+        Prefer module-level `load_config(name)` for anything in `_FILES` — it is
+        cached and validates the name against the registry. This method stays for
+        an ad hoc config file outside that registry.
+        """
         path = CONFIG_DIR / f"{name}.yaml"
         if not path.exists():
             return {}
