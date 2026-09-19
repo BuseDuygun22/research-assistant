@@ -1,0 +1,44 @@
+# Track A / Buse — ingestion + chunking + embedding
+# Every knob here is a design choice. Notebooks 01-03 explain the reasoning and
+# let you re-run a sweep before changing a value.
+
+corpus:
+  raw_dir: data/raw            # PDFs go here (gitignored)
+  interim_dir: data/interim    # parsed JSONL, one record per page
+  processed_dir: data/processed # chunked + embedded JSONL
+  manifest: data/corpus_manifest_B.jsonl  # one row per paper: id, title, year, venue, why_included
+
+parse:
+  backend: pymupdf             # alt: grobid (better sections, needs a Docker service)
+  keep_pages: true             # page number is required for citation precision
+  drop_sections:               # matched case-insensitively against detected headings
+    - references
+    - bibliography
+    - acknowledg
+    - appendix
+  min_chars_per_page: 200      # below this, page is likely a figure/scan -> flag, don't silently drop
+
+chunk:
+  strategy: section_aware      # alt: fixed_window, recursive_character, semantic
+  target_tokens: 350           # sweep in notebook 02: [200, 350, 512, 800]
+  overlap_tokens: 60
+  min_tokens: 80               # merge anything smaller into its neighbour
+  max_tokens: 700              # hard cap; split at sentence boundary
+  tokenizer: cl100k_base
+  respect_paragraphs: true
+  prepend_context: true        # each chunk text starts with "TITLE > SECTION" for retrieval recall
+
+metadata_schema:               # must match contracts/retrieval_J.py Chunk model
+  required: [chunk_id, paper_id, title, section, page_start, page_end, text, n_tokens]
+  optional: [subsection, year, venue, authors, doi]
+
+embed:
+  model: BAAI/bge-small-en-v1.5   # 384-dim, 33M params, strong MTEB retrieval score for the size
+  # alts to benchmark in notebook 03: intfloat/e5-base-v2, BAAI/bge-base-en-v1.5,
+  #                                   sentence-transformers/all-MiniLM-L6-v2
+  dim: 384
+  normalize: true              # required: we use cosine/inner-product
+  batch_size: 64
+  query_prefix: "Represent this sentence for searching relevant passages: "  # bge asymmetric prefix
+  passage_prefix: ""
+  device: auto                 # cpu | cuda | auto

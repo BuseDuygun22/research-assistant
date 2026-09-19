@@ -1,0 +1,556 @@
+{
+  "generator": "tests/fixtures/make_synthetic_corpus_B.py",
+  "note": "Synthetic corpus. Page numbers are 1-based and read back from the rendered PDF, so they are valid for exactly these files.",
+  "body_font_size": 10.0,
+  "heading_font_size": 14.0,
+  "dropped_section_heading": "References",
+  "n_papers": 7,
+  "papers": [
+    {
+      "paper_id": "synth001",
+      "filename": "synth001_sparseloom.pdf",
+      "title": "SparseLoom: Structured Sparsity for Long-Context Retrieval",
+      "year": 2023,
+      "venue": "Proceedings of the Workshop on Efficient Retrieval",
+      "n_pages": 3,
+      "method": "SparseLoom",
+      "dataset": "LoomBench",
+      "metric": "nDCG@10",
+      "value": "61.4",
+      "sections": [
+        "Abstract",
+        "1 Introduction",
+        "2 Method",
+        "3 Experiments",
+        "4 Results",
+        "5 Limitations",
+        "References"
+      ],
+      "facts": [
+        {
+          "fact_id": "synth001-method",
+          "kind": "method_name",
+          "question": "What method does 'SparseLoom: Structured Sparsity for Long-Context Retrieval' introduce?",
+          "answer": "SparseLoom",
+          "evidence": "We present SparseLoom, a block-sparse attention approach to long-context passage retrieval.",
+          "page": 1,
+          "pages": [
+            1
+          ]
+        },
+        {
+          "fact_id": "synth001-dataset",
+          "kind": "dataset_name",
+          "question": "Which dataset is SparseLoom evaluated on?",
+          "answer": "LoomBench",
+          "evidence": "We evaluate on LoomBench, which contains 48,000 examples.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth001-result",
+          "kind": "numeric_result",
+          "question": "What nDCG@10 does SparseLoom achieve on LoomBench?",
+          "answer": "61.4 nDCG@10",
+          "evidence": "SparseLoom reaches 61.4 nDCG@10 on LoomBench.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth001-baseline",
+          "kind": "baseline_comparison",
+          "question": "What does the DenseWeave baseline achieve on LoomBench?",
+          "answer": "54.9 nDCG@10",
+          "evidence": "The DenseWeave baseline reaches 54.9 nDCG@10 under the identical protocol.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth001-ablation",
+          "kind": "ablation",
+          "question": "How much nDCG@10 is lost when removing the block router in SparseLoom?",
+          "answer": "4.8 points of nDCG@10",
+          "evidence": "With removing the block router, nDCG@10 falls by 4.8 points",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "synth002",
+      "filename": "synth002_quillnet.pdf",
+      "title": "QuillNet: Query Reformulation Without Supervised Pairs",
+      "year": 2022,
+      "venue": "Conference on Information Access",
+      "n_pages": 3,
+      "method": "QuillNet",
+      "dataset": "AskCorpus",
+      "metric": "recall@20",
+      "value": "78.2",
+      "sections": [
+        "Abstract",
+        "1 Introduction",
+        "2 Method",
+        "3 Experiments",
+        "4 Results",
+        "5 Limitations",
+        "References"
+      ],
+      "facts": [
+        {
+          "fact_id": "synth002-method",
+          "kind": "method_name",
+          "question": "What method does 'QuillNet: Query Reformulation Without Supervised Pairs' introduce?",
+          "answer": "QuillNet",
+          "evidence": "We present QuillNet, a self-supervised reformulation approach to open-domain question answering.",
+          "page": 1,
+          "pages": [
+            1
+          ]
+        },
+        {
+          "fact_id": "synth002-dataset",
+          "kind": "dataset_name",
+          "question": "Which dataset is QuillNet evaluated on?",
+          "answer": "AskCorpus",
+          "evidence": "We evaluate on AskCorpus, which contains 112,300 examples.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth002-result",
+          "kind": "numeric_result",
+          "question": "What recall@20 does QuillNet achieve on AskCorpus?",
+          "answer": "78.2 recall@20",
+          "evidence": "QuillNet reaches 78.2 recall@20 on AskCorpus.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth002-baseline",
+          "kind": "baseline_comparison",
+          "question": "What does the TermExpand baseline achieve on AskCorpus?",
+          "answer": "71.0 recall@20",
+          "evidence": "The TermExpand baseline reaches 71.0 recall@20 under the identical protocol.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth002-ablation",
+          "kind": "ablation",
+          "question": "How much recall@20 is lost when disabling the round-trip consistency filter in QuillNet?",
+          "answer": "6.1 points of recall@20",
+          "evidence": "With disabling the round-trip consistency filter, recall@20 falls by 6.1 points",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "synth003",
+      "filename": "synth003_cascadeprune.pdf",
+      "title": "Cascade Pruning for Neural Rerankers Under Latency Budgets",
+      "year": 2024,
+      "venue": "Symposium on Applied Ranking",
+      "n_pages": 4,
+      "method": "CascadePrune",
+      "dataset": "LatencyMSM",
+      "metric": "MRR@10",
+      "value": "39.7",
+      "sections": [
+        "Abstract",
+        "1 Introduction",
+        "2 Method",
+        "3 Experiments",
+        "4 Results",
+        "5 Limitations",
+        "References"
+      ],
+      "facts": [
+        {
+          "fact_id": "synth003-method",
+          "kind": "method_name",
+          "question": "What method does 'Cascade Pruning for Neural Rerankers Under Latency Budgets' introduce?",
+          "answer": "CascadePrune",
+          "evidence": "We present CascadePrune, a early-exit cascade approach to passage reranking.",
+          "page": 1,
+          "pages": [
+            1
+          ]
+        },
+        {
+          "fact_id": "synth003-dataset",
+          "kind": "dataset_name",
+          "question": "Which dataset is CascadePrune evaluated on?",
+          "answer": "LatencyMSM",
+          "evidence": "We evaluate on LatencyMSM, which contains 9,800 examples.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth003-result",
+          "kind": "numeric_result",
+          "question": "What MRR@10 does CascadePrune achieve on LatencyMSM?",
+          "answer": "39.7 MRR@10",
+          "evidence": "CascadePrune reaches 39.7 MRR@10 on LatencyMSM.",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        },
+        {
+          "fact_id": "synth003-baseline",
+          "kind": "baseline_comparison",
+          "question": "What does the FullCross baseline achieve on LatencyMSM?",
+          "answer": "40.3 MRR@10",
+          "evidence": "The FullCross baseline reaches 40.3 MRR@10 under the identical protocol.",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        },
+        {
+          "fact_id": "synth003-ablation",
+          "kind": "ablation",
+          "question": "How much MRR@10 is lost when fixing the exit threshold instead of learning it in CascadePrune?",
+          "answer": "2.2 points of MRR@10",
+          "evidence": "With fixing the exit threshold instead of learning it, MRR@10 falls by 2.2 points",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "synth004",
+      "filename": "synth004_graniteindex.pdf",
+      "title": "GraniteIndex: Disk-Resident Vector Search for Small Teams",
+      "year": 2023,
+      "venue": "Workshop on Practical Vector Databases",
+      "n_pages": 3,
+      "method": "GraniteIndex",
+      "dataset": "GraniteVec",
+      "metric": "recall@10",
+      "value": "94.6",
+      "sections": [
+        "Abstract",
+        "1 Introduction",
+        "2 Method",
+        "3 Experiments",
+        "4 Results",
+        "5 Limitations",
+        "References"
+      ],
+      "facts": [
+        {
+          "fact_id": "synth004-method",
+          "kind": "method_name",
+          "question": "What method does 'GraniteIndex: Disk-Resident Vector Search for Small Teams' introduce?",
+          "answer": "GraniteIndex",
+          "evidence": "We present GraniteIndex, a disk-resident graph index approach to approximate nearest neighbour search.",
+          "page": 1,
+          "pages": [
+            1
+          ]
+        },
+        {
+          "fact_id": "synth004-dataset",
+          "kind": "dataset_name",
+          "question": "Which dataset is GraniteIndex evaluated on?",
+          "answer": "GraniteVec",
+          "evidence": "We evaluate on GraniteVec, which contains 2,400,000 examples.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth004-result",
+          "kind": "numeric_result",
+          "question": "What recall@10 does GraniteIndex achieve on GraniteVec?",
+          "answer": "94.6 recall@10",
+          "evidence": "GraniteIndex reaches 94.6 recall@10 on GraniteVec.",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        },
+        {
+          "fact_id": "synth004-baseline",
+          "kind": "baseline_comparison",
+          "question": "What does the FlatScan baseline achieve on GraniteVec?",
+          "answer": "99.9 recall@10",
+          "evidence": "The FlatScan baseline reaches 99.9 recall@10 under the identical protocol.",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        },
+        {
+          "fact_id": "synth004-ablation",
+          "kind": "ablation",
+          "question": "How much recall@10 is lost when removing the cached entry-point layer in GraniteIndex?",
+          "answer": "11.3 points of recall@10",
+          "evidence": "With removing the cached entry-point layer, recall@10 falls by 11.3 points",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "synth005",
+      "filename": "synth005_probecheck.pdf",
+      "title": "Faithfulness Probes for Retrieval-Augmented Summarisation",
+      "year": 2024,
+      "venue": "Conference on Generation and Grounding",
+      "n_pages": 3,
+      "method": "ProbeCheck",
+      "dataset": "GroundSum",
+      "metric": "faithfulness F1",
+      "value": "83.1",
+      "sections": [
+        "Abstract",
+        "1 Introduction",
+        "2 Method",
+        "3 Experiments",
+        "4 Results",
+        "5 Limitations",
+        "References"
+      ],
+      "facts": [
+        {
+          "fact_id": "synth005-method",
+          "kind": "method_name",
+          "question": "What method does 'Faithfulness Probes for Retrieval-Augmented Summarisation' introduce?",
+          "answer": "ProbeCheck",
+          "evidence": "We present ProbeCheck, a token-level attribution probe approach to grounded summarisation.",
+          "page": 1,
+          "pages": [
+            1
+          ]
+        },
+        {
+          "fact_id": "synth005-dataset",
+          "kind": "dataset_name",
+          "question": "Which dataset is ProbeCheck evaluated on?",
+          "answer": "GroundSum",
+          "evidence": "We evaluate on GroundSum, which contains 15,600 examples.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth005-result",
+          "kind": "numeric_result",
+          "question": "What faithfulness F1 does ProbeCheck achieve on GroundSum?",
+          "answer": "83.1 faithfulness F1",
+          "evidence": "ProbeCheck reaches 83.1 faithfulness F1 on GroundSum.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth005-baseline",
+          "kind": "baseline_comparison",
+          "question": "What does the NLIJudge baseline achieve on GroundSum?",
+          "answer": "76.4 faithfulness F1",
+          "evidence": "The NLIJudge baseline reaches 76.4 faithfulness F1 under the identical protocol.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth005-ablation",
+          "kind": "ablation",
+          "question": "How much faithfulness F1 is lost when collapsing the probe to a sentence-level classifier in ProbeCheck?",
+          "answer": "5.5 points of faithfulness F1",
+          "evidence": "With collapsing the probe to a sentence-level classifier, faithfulness F1 falls by 5.5 points",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "synth006",
+      "filename": "synth006_sectionsplit.pdf",
+      "title": "Section-Aware Chunking Beats Fixed Windows on Scientific Text",
+      "year": 2022,
+      "venue": "Workshop on Document Understanding",
+      "n_pages": 4,
+      "method": "SectionSplit",
+      "dataset": "SciChunk",
+      "metric": "answer recall",
+      "value": "72.9",
+      "sections": [
+        "Abstract",
+        "1 Introduction",
+        "2 Method",
+        "3 Experiments",
+        "4 Results",
+        "5 Limitations",
+        "References"
+      ],
+      "facts": [
+        {
+          "fact_id": "synth006-method",
+          "kind": "method_name",
+          "question": "What method does 'Section-Aware Chunking Beats Fixed Windows on Scientific Text' introduce?",
+          "answer": "SectionSplit",
+          "evidence": "We present SectionSplit, a layout-conditioned segmentation approach to chunking for retrieval-augmented generation.",
+          "page": 1,
+          "pages": [
+            1
+          ]
+        },
+        {
+          "fact_id": "synth006-dataset",
+          "kind": "dataset_name",
+          "question": "Which dataset is SectionSplit evaluated on?",
+          "answer": "SciChunk",
+          "evidence": "We evaluate on SciChunk, which contains 3,100 examples.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth006-result",
+          "kind": "numeric_result",
+          "question": "What answer recall does SectionSplit achieve on SciChunk?",
+          "answer": "72.9 answer recall",
+          "evidence": "SectionSplit reaches 72.9 answer recall on SciChunk.",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        },
+        {
+          "fact_id": "synth006-baseline",
+          "kind": "baseline_comparison",
+          "question": "What does the FixedWindow512 baseline achieve on SciChunk?",
+          "answer": "65.2 answer recall",
+          "evidence": "The FixedWindow512 baseline reaches 65.2 answer recall under the identical protocol.",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        },
+        {
+          "fact_id": "synth006-ablation",
+          "kind": "ablation",
+          "question": "How much answer recall is lost when dropping the title-and-section context prefix in SectionSplit?",
+          "answer": "3.4 points of answer recall",
+          "evidence": "With dropping the title-and-section context prefix, answer recall falls by 3.4 points",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "paper_id": "synth007",
+      "filename": "synth007_rubricdpo.pdf",
+      "title": "RubricDPO: Preference Tuning a Reranker From Rubric Scores",
+      "year": 2025,
+      "venue": "Conference on Preference Learning",
+      "n_pages": 4,
+      "method": "RubricDPO",
+      "dataset": "RubricPairs",
+      "metric": "nDCG@5",
+      "value": "58.8",
+      "sections": [
+        "Abstract",
+        "1 Introduction",
+        "2 Method",
+        "3 Experiments",
+        "4 Results",
+        "5 Limitations",
+        "References"
+      ],
+      "facts": [
+        {
+          "fact_id": "synth007-method",
+          "kind": "method_name",
+          "question": "What method does 'RubricDPO: Preference Tuning a Reranker From Rubric Scores' introduce?",
+          "answer": "RubricDPO",
+          "evidence": "We present RubricDPO, a direct preference optimisation approach to reranker training.",
+          "page": 1,
+          "pages": [
+            1
+          ]
+        },
+        {
+          "fact_id": "synth007-dataset",
+          "kind": "dataset_name",
+          "question": "Which dataset is RubricDPO evaluated on?",
+          "answer": "RubricPairs",
+          "evidence": "We evaluate on RubricPairs, which contains 26,700 examples.",
+          "page": 2,
+          "pages": [
+            2
+          ]
+        },
+        {
+          "fact_id": "synth007-result",
+          "kind": "numeric_result",
+          "question": "What nDCG@5 does RubricDPO achieve on RubricPairs?",
+          "answer": "58.8 nDCG@5",
+          "evidence": "RubricDPO reaches 58.8 nDCG@5 on RubricPairs.",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        },
+        {
+          "fact_id": "synth007-baseline",
+          "kind": "baseline_comparison",
+          "question": "What does the PointwiseBCE baseline achieve on RubricPairs?",
+          "answer": "52.1 nDCG@5",
+          "evidence": "The PointwiseBCE baseline reaches 52.1 nDCG@5 under the identical protocol.",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        },
+        {
+          "fact_id": "synth007-ablation",
+          "kind": "ablation",
+          "question": "How much nDCG@5 is lost when sampling pairs uniformly instead of by score margin in RubricDPO?",
+          "answer": "3.9 points of nDCG@5",
+          "evidence": "With sampling pairs uniformly instead of by score margin, nDCG@5 falls by 3.9 points",
+          "page": 3,
+          "pages": [
+            3
+          ]
+        }
+      ]
+    }
+  ]
+}

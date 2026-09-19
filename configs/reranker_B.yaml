@@ -1,0 +1,52 @@
+# Track A / Buse — preference pairs + DPO cross-encoder training
+# Stages 07 and 08. Sude owns the judge that produces the scores consumed here.
+
+pairs:
+  judge_scores_path: data/judge_scores.jsonl   # written by Sude's relevance judge
+  out_path: data/preference_pairs_B.jsonl
+  # On the judge's 0-3 TREC scale (changed from an earlier 1-5 draft scale --
+  # a gap of 2 does not mean the same thing on the two scales, so this was
+  # re-picked, not carried over). scripts/sweep_min_score_gap_B.py's pair-yield
+  # experiment (2026-09-19, on a simulated proxy -- see the script's docstring)
+  # found gap=1 and gap=2 produce IDENTICAL pair counts and query coverage at
+  # every max_pairs_per_query tried (2, 4, 8): the per-query cap fills its quota
+  # from the widest-margin pairs first, so gap=1 pairs are never actually needed.
+  # gap=2 is therefore free -- same data, strictly less noise -- while gap=3
+  # loses real yield (~40-49% fewer pairs, coverage drops to 64% of queries).
+  # This is pair-yield evidence only, not a validated choice: it still needs
+  # (1) a rerun against Sude's real judge output once it exists, (2) a
+  # judge-vs-human agreement check at this gap on a qrels subset, and (3) a
+  # held-out nDCG@5/MRR/recall@20 comparison against gap=1 and gap=3 DPO runs.
+  min_score_gap: 2
+  max_pairs_per_query: 4       # cap so verbose queries don't dominate the loss
+  hard_negatives_only: true    # rejected chunk must come from the same candidate set, not a random doc
+  dedupe: true
+  eval_query_blocklist: eval/datasets/queries_B.jsonl  # enforced by tests/test_no_eval_leakage_J.py
+
+model:
+  base: cross-encoder/ms-marco-MiniLM-L-6-v2   # 22M params, trains on CPU in minutes
+  # alt: BAAI/bge-reranker-base (better, 278M, wants a GPU)
+  max_length: 512
+  num_labels: 1
+
+train:
+  method: dpo
+  beta: 0.1                    # DPO temperature; lower = stay closer to the reference model
+  learning_rate: 5.0e-6
+  per_device_train_batch_size: 8
+  gradient_accumulation_steps: 2
+  num_train_epochs: 1
+  warmup_ratio: 0.1
+  max_grad_norm: 1.0
+  seed: 42
+  output_dir: models/reranker_dpo_B
+
+mlflow:
+  tracking_uri: file:./mlruns
+  experiment: reranker_dpo_B
+  log_params: true
+  log_eval_metrics: true       # nDCG@5, MRR, citation precision on the held-out set
+
+registry:
+  models_dir: models
+  manifest: models/registry_B.json   # name -> path, base model, train run id, eval scores

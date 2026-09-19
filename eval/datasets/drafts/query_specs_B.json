@@ -1,0 +1,806 @@
+{
+ "_about": "Stage 05 query specs for the fraud-detection corpus. Source of truth for drafts; edit here, then re-run scripts/build_eval_drafts_B.py. `answer_all`: every regex must match a chunk for a draft grade 3. `related_any`: any regex matching gives a draft grade 2. Regexes are case-insensitive and run over whitespace-collapsed chunk text. Shapes follow docs/domain_brief_B.md.",
+ "surveys": [
+  "db99b0939e",
+  "6630693dc4"
+ ],
+ "queries": [
+  {
+   "query_id": "fr001",
+   "shape": "method_lookup",
+   "targets": [
+    "b8f6924f77"
+   ],
+   "query": "What techniques are introduced to alleviate the inconsistency problem when applying graph neural networks to fraud detection?",
+   "answer_all": [
+    "inconsisten",
+    "context|feature|relation"
+   ],
+   "related_any": [
+    "inconsisten"
+   ]
+  },
+  {
+   "query_id": "fr002",
+   "shape": "method_lookup",
+   "targets": [
+    "3f27e073ac"
+   ],
+   "query": "What is the CMT method and how does it detect crowdsourcing fraud on multi-purpose messaging apps?",
+   "answer_all": [
+    "contrastive",
+    "multi-view"
+   ],
+   "related_any": [
+    "CMT",
+    "heterogeneous temporal graph"
+   ]
+  },
+  {
+   "query_id": "fr003",
+   "shape": "method_lookup",
+   "targets": [
+    "12b078eb0f"
+   ],
+   "query": "How does the ADAPT method balance exploration and exploitation when selecting goods for customs inspection?",
+   "answer_all": [
+    "exploration",
+    "exploitation"
+   ],
+   "related_any": [
+    "ADAPT"
+   ]
+  },
+  {
+   "query_id": "fr004",
+   "shape": "method_lookup",
+   "targets": [
+    "5325b2a38b"
+   ],
+   "query": "How is synthetic ERP system data containing fraudulent activity generated for occupational fraud detection?",
+   "answer_all": [
+    "synthetic|simulat",
+    "ERP"
+   ],
+   "related_any": [
+    "ERP system",
+    "fraud scenario|fraud case"
+   ]
+  },
+  {
+   "query_id": "fr005",
+   "shape": "method_lookup",
+   "targets": [
+    "6f892a6789"
+   ],
+   "query": "How does EnsemFDet scale fraud detection to large bipartite graphs?",
+   "answer_all": [
+    "subgraph",
+    "ensemble|sampl"
+   ],
+   "related_any": [
+    "EnsemFDet|ENSEMFDET|Ensem ?FDet",
+    "bipartite"
+   ]
+  },
+  {
+   "query_id": "fr006",
+   "shape": "method_lookup",
+   "targets": [
+    "c59e30579b"
+   ],
+   "query": "What is a spectral coordinate and how is it used as input for fraud detection on signed graphs?",
+   "answer_all": [
+    "spectral coordinate"
+   ],
+   "related_any": [
+    "spectral",
+    "signed graph"
+   ]
+  },
+  {
+   "query_id": "fr007",
+   "shape": "method_lookup",
+   "targets": [
+    "927e2768c4"
+   ],
+   "query": "What are deep boosting decision trees and how do they combine gradient boosting with neural networks?",
+   "answer_all": [
+    "DBDT|deep boosting decision tree",
+    "gradient boosting|neural"
+   ],
+   "related_any": [
+    "DBDT",
+    "boosting"
+   ]
+  },
+  {
+   "query_id": "fr008",
+   "shape": "method_lookup",
+   "targets": [
+    "9ae179117c"
+   ],
+   "query": "How does the tamper-evident fraud detection system anchor predictions and workflow execution to a blockchain ledger?",
+   "answer_all": [
+    "blockchain|ledger",
+    "anchor|tamper"
+   ],
+   "related_any": [
+    "blockchain",
+    "audit"
+   ]
+  },
+  {
+   "query_id": "fr009",
+   "shape": "method_lookup",
+   "targets": [
+    "04711b19ca"
+   ],
+   "query": "What two LLM-based solutions are proposed for user authentication and fraud detection?",
+   "answer_all": [
+    "authentication",
+    "fraud",
+    "LLM|large language model"
+   ],
+   "related_any": [
+    "authentication",
+    "scam"
+   ]
+  },
+  {
+   "query_id": "fr010",
+   "shape": "method_lookup",
+   "targets": [
+    "8fca12f1d3"
+   ],
+   "query": "How are quantum graph neural networks applied to financial fraud detection?",
+   "answer_all": [
+    "quantum",
+    "graph"
+   ],
+   "related_any": [
+    "QGNN|quantum"
+   ]
+  },
+  {
+   "query_id": "fr011",
+   "shape": "method_lookup",
+   "targets": [
+    "68ce5f1dce"
+   ],
+   "query": "How do interleaved sequence RNNs model card transactions for real-time fraud detection?",
+   "answer_all": [
+    "interleav",
+    "sequence|RNN|GRU"
+   ],
+   "related_any": [
+    "real-time|real time",
+    "RNN|GRU"
+   ]
+  },
+  {
+   "query_id": "fr012",
+   "shape": "dataset_lookup",
+   "targets": [
+    "87a8d5dea3"
+   ],
+   "query": "Which datasets is SEFraud evaluated on?",
+   "answer_all": [
+    "dataset",
+    "Yelp|Amazon"
+   ],
+   "related_any": [
+    "dataset",
+    "Yelp|Amazon"
+   ]
+  },
+  {
+   "query_id": "fr013",
+   "shape": "dataset_lookup",
+   "targets": [
+    "2f17648050"
+   ],
+   "query": "Which datasets are used to evaluate the DPF-GFD model?",
+   "answer_all": [
+    "Elliptic|FDCompCN|DGraph"
+   ],
+   "related_any": [
+    "dataset"
+   ]
+  },
+  {
+   "query_id": "fr014",
+   "shape": "dataset_lookup",
+   "targets": [
+    "927e2768c4"
+   ],
+   "query": "Which datasets are used to evaluate deep boosting decision trees for fraud detection?",
+   "answer_all": [
+    "dataset",
+    "BankSim|LendingClub|credit card"
+   ],
+   "related_any": [
+    "dataset"
+   ]
+  },
+  {
+   "query_id": "fr015",
+   "shape": "dataset_lookup",
+   "targets": [
+    "8f600af57a"
+   ],
+   "query": "What dataset is the temporal heterogeneous graph transformer THGT-FD evaluated on?",
+   "answer_all": [
+    "IEEE-CIS|IEEE CIS"
+   ],
+   "related_any": [
+    "dataset"
+   ]
+  },
+  {
+   "query_id": "fr016",
+   "shape": "dataset_lookup",
+   "targets": [
+    "b5245035ff"
+   ],
+   "query": "How much data is used to train and test the SVDD fraud detector, and how is it split between fraud and non-fraud samples?",
+   "answer_all": [
+    "percent|million",
+    "train|test"
+   ],
+   "related_any": [
+    "dataset"
+   ]
+  },
+  {
+   "query_id": "fr017",
+   "shape": "dataset_lookup",
+   "targets": [
+    "f6133bc16c"
+   ],
+   "query": "Which benchmark datasets are used to evaluate the Dual-channel Heterophilic Message Passing framework?",
+   "answer_all": [
+    "YelpChi|Amazon|FDCompCN",
+    "dataset"
+   ],
+   "related_any": [
+    "dataset"
+   ]
+  },
+  {
+   "query_id": "fr018",
+   "shape": "dataset_lookup",
+   "targets": [
+    "9fd4d8cdb2"
+   ],
+   "query": "What data is used to compare anomaly detection techniques for credit card fraud in the Nigerian financial sector?",
+   "answer_all": [
+    "data",
+    "Nigeria|transaction"
+   ],
+   "related_any": [
+    "dataset|data set"
+   ]
+  },
+  {
+   "query_id": "fr019",
+   "shape": "dataset_lookup",
+   "targets": [
+    "0b390ea2fa"
+   ],
+   "query": "Which dataset is Deep Symbolic Classification evaluated on for fraud detection?",
+   "answer_all": [
+    "PaySim"
+   ],
+   "related_any": [
+    "dataset|data set"
+   ]
+  },
+  {
+   "query_id": "fr020",
+   "shape": "dataset_lookup",
+   "targets": [
+    "3f27e073ac"
+   ],
+   "query": "What data is used to evaluate crowdsourcing fraud detection on the messaging app graph?",
+   "answer_all": [
+    "dataset|data set",
+    "WeChat|Tencent|MMMA"
+   ],
+   "related_any": [
+    "dataset|data set"
+   ]
+  },
+  {
+   "query_id": "fr021",
+   "shape": "results_metrics",
+   "targets": [
+    "f0aecca4b0"
+   ],
+   "query": "Which classifier performs best for fraud detection under imbalanced classes, and which metrics are used to judge it?",
+   "answer_all": [
+    "XGBoost|random forest|logistic regression|decision tree",
+    "F1|AUC|recall|precision"
+   ],
+   "related_any": [
+    "XGBoost",
+    "metric"
+   ]
+  },
+  {
+   "query_id": "fr022",
+   "shape": "results_metrics",
+   "targets": [
+    "84ccbefe24"
+   ],
+   "query": "What detection performance does the neural network combined with SMOTE achieve on credit card fraud?",
+   "answer_all": [
+    "SMOTE",
+    "accuracy|precision|recall|F1|AUC"
+   ],
+   "related_any": [
+    "accuracy|precision|recall|F1|AUC"
+   ]
+  },
+  {
+   "query_id": "fr023",
+   "shape": "results_metrics",
+   "targets": [
+    "4141c16a26"
+   ],
+   "query": "Which evaluation metrics are used for the dynamic relation-attentive GNN, and how does it perform against baselines?",
+   "answer_all": [
+    "AUC|F1|G-mean|recall",
+    "YelpChi|Amazon|baseline"
+   ],
+   "related_any": [
+    "AUC|F1|G-mean|recall"
+   ]
+  },
+  {
+   "query_id": "fr024",
+   "shape": "results_metrics",
+   "targets": [
+    "8a1c02f0be"
+   ],
+   "query": "Which metrics are used to evaluate the semi-supervised attribute-driven graph model for credit card fraud, and what results does it report?",
+   "answer_all": [
+    "AUC|F1|recall|precision",
+    "baseline|outperform|result"
+   ],
+   "related_any": [
+    "AUC|F1|recall|precision"
+   ]
+  },
+  {
+   "query_id": "fr025",
+   "shape": "results_metrics",
+   "targets": [
+    "9fd4d8cdb2"
+   ],
+   "query": "How do autoencoders compare with PCA for detecting credit card fraud in the Nigerian financial sector?",
+   "answer_all": [
+    "autoencoder",
+    "PCA"
+   ],
+   "related_any": [
+    "autoencoder|PCA"
+   ]
+  },
+  {
+   "query_id": "fr026",
+   "shape": "results_metrics",
+   "targets": [
+    "2d9cb5c872"
+   ],
+   "query": "Does graph pre-training with contrastive learning improve fraud detection on non-attributed graphs, and how is the improvement measured?",
+   "answer_all": [
+    "pre-train|pretrain",
+    "AUC|F1|improv|outperform"
+   ],
+   "related_any": [
+    "pre-train|pretrain|contrastive"
+   ]
+  },
+  {
+   "query_id": "fr027",
+   "shape": "results_metrics",
+   "targets": [
+    "9cda0bea6b"
+   ],
+   "query": "Which performance measures should be used when evaluating financial fraud detection methods?",
+   "answer_all": [
+    "measure|metric",
+    "accuracy|sensitivity|specificity|precision|recall|AUC"
+   ],
+   "related_any": [
+    "performance"
+   ]
+  },
+  {
+   "query_id": "fr028",
+   "shape": "results_metrics",
+   "targets": [
+    "7c4a80b8af"
+   ],
+   "query": "How does the locally interpretable one-class anomaly detection framework perform on the credit card fraud dataset?",
+   "answer_all": [
+    "AUC|precision|recall|F1",
+    "result|perform|outperform"
+   ],
+   "related_any": [
+    "AUC|precision|recall|F1"
+   ]
+  },
+  {
+   "query_id": "fr029",
+   "shape": "challenge_handling",
+   "targets": [
+    "b214ba014f"
+   ],
+   "query": "How does GraphFC deal with label scarcity caused by low customs inspection rates?",
+   "answer_all": [
+    "label|inspect",
+    "unlabel|semi-supervised|pre-train|scarc"
+   ],
+   "related_any": [
+    "label scarc|unlabel|inspection"
+   ]
+  },
+  {
+   "query_id": "fr030",
+   "shape": "challenge_handling",
+   "targets": [
+    "84ccbefe24"
+   ],
+   "query": "How is class imbalance handled in the neural network approach to credit card fraud detection?",
+   "answer_all": [
+    "SMOTE",
+    "imbalanc|minority|oversampl|over-sampl"
+   ],
+   "related_any": [
+    "SMOTE|imbalanc"
+   ]
+  },
+  {
+   "query_id": "fr031",
+   "shape": "challenge_handling",
+   "targets": [
+    "f0aecca4b0"
+   ],
+   "query": "Which resampling techniques are used to address imbalanced classes in fraud detection with optimized machine learning tools?",
+   "answer_all": [
+    "imbalanc",
+    "SMOTE|undersampl|oversampl|resampl|under-sampl|over-sampl"
+   ],
+   "related_any": [
+    "imbalanc"
+   ]
+  },
+  {
+   "query_id": "fr032",
+   "shape": "challenge_handling",
+   "targets": [
+    "b8f6924f77"
+   ],
+   "query": "How do fraudsters camouflage themselves in graph data, and why does this break graph neural network fraud detectors?",
+   "answer_all": [
+    "camouflag|disguis",
+    "inconsisten|neighbor|neighbour"
+   ],
+   "related_any": [
+    "camouflag|inconsisten"
+   ]
+  },
+  {
+   "query_id": "fr033",
+   "shape": "challenge_handling",
+   "targets": [
+    "2f17648050"
+   ],
+   "query": "How does dual-path graph filtering address heterophily in financial fraud graphs?",
+   "answer_all": [
+    "heterophil",
+    "filter"
+   ],
+   "related_any": [
+    "heterophil|spectral"
+   ]
+  },
+  {
+   "query_id": "fr034",
+   "shape": "challenge_handling",
+   "targets": [
+    "f6133bc16c"
+   ],
+   "query": "How does DHMP separate homophilic and heterophilic neighbours during message passing?",
+   "answer_all": [
+    "homophil",
+    "heterophil"
+   ],
+   "related_any": [
+    "heterophil|channel"
+   ]
+  },
+  {
+   "query_id": "fr035",
+   "shape": "challenge_handling",
+   "targets": [
+    "b5245035ff"
+   ],
+   "query": "How does REDBSCAN reduce the number of training samples for support vector data description?",
+   "answer_all": [
+    "REDBSCAN|DBSCAN",
+    "sample"
+   ],
+   "related_any": [
+    "DBSCAN"
+   ]
+  },
+  {
+   "query_id": "fr036",
+   "shape": "challenge_handling",
+   "targets": [
+    "c59e30579b"
+   ],
+   "query": "How does the spectrum-based deep neural network cope with having only a small set of labelled training data?",
+   "answer_all": [
+    "label",
+    "small|few|limited"
+   ],
+   "related_any": [
+    "spectral|label"
+   ]
+  },
+  {
+   "query_id": "fr037",
+   "shape": "explainability_limitations",
+   "targets": [
+    "87a8d5dea3"
+   ],
+   "query": "How does SEFraud produce explanations for its fraud predictions?",
+   "answer_all": [
+    "mask",
+    "interpret|explain|explanation"
+   ],
+   "related_any": [
+    "interpret|explain"
+   ]
+  },
+  {
+   "query_id": "fr038",
+   "shape": "explainability_limitations",
+   "targets": [
+    "7c4a80b8af"
+   ],
+   "query": "How does the model-explaining module explain individual credit card fraud predictions?",
+   "answer_all": [
+    "explain|explanation|interpret",
+    "SHAP|local|feature|prediction"
+   ],
+   "related_any": [
+    "explain|interpret"
+   ]
+  },
+  {
+   "query_id": "fr039",
+   "shape": "explainability_limitations",
+   "targets": [
+    "0b390ea2fa"
+   ],
+   "query": "Why are the models found by Deep Symbolic Classification considered explainable?",
+   "answer_all": [
+    "symbolic|expression|formula",
+    "explainab|interpretab|transparen"
+   ],
+   "related_any": [
+    "explainab|interpretab"
+   ]
+  },
+  {
+   "query_id": "fr040",
+   "shape": "explainability_limitations",
+   "targets": [
+    "410803359a"
+   ],
+   "query": "Which explainable AI techniques are discussed for big data fraud detection pipelines?",
+   "answer_all": [
+    "SHAP|LIME|counterfactual|attention|surrogate",
+    "explain|XAI|interpret"
+   ],
+   "related_any": [
+    "XAI|explainab"
+   ]
+  },
+  {
+   "query_id": "fr041",
+   "shape": "explainability_limitations",
+   "targets": [
+    "9ae179117c"
+   ],
+   "query": "How are model explanations recorded in the blockchain-anchored system so that audits cannot be tampered with?",
+   "answer_all": [
+    "explain|explanation|SHAP",
+    "hash|anchor|ledger|blockchain"
+   ],
+   "related_any": [
+    "explain|explanation|SHAP"
+   ]
+  },
+  {
+   "query_id": "fr042",
+   "shape": "explainability_limitations",
+   "targets": [
+    "b7c0a8ef64"
+   ],
+   "query": "What open research problems are identified for machine learning fraud detection in e-commerce?",
+   "answer_all": [
+    "research",
+    "challenge|problem|topic|direction|question"
+   ],
+   "related_any": [
+    "research agenda|research topic|open problem"
+   ]
+  },
+  {
+   "query_id": "fr043",
+   "shape": "explainability_limitations",
+   "targets": [
+    "9cda0bea6b"
+   ],
+   "query": "Which experimental issues in financial fraud detection research do the authors identify?",
+   "answer_all": [
+    "issue|problem",
+    "algorithm|performance|dataset|experiment"
+   ],
+   "related_any": [
+    "issue"
+   ]
+  },
+  {
+   "query_id": "fr044",
+   "shape": "explainability_limitations",
+   "targets": [
+    "5325b2a38b"
+   ],
+   "query": "What limitations of available fraud data motivate generating synthetic ERP system data?",
+   "answer_all": [
+    "data",
+    "lack|unavailab|privacy|confidential|scarce|not publicly|publicly available"
+   ],
+   "related_any": [
+    "publicly available|privacy|lack"
+   ]
+  },
+  {
+   "query_id": "fr045",
+   "shape": "explainability_limitations",
+   "targets": [
+    "db99b0939e"
+   ],
+   "query": "What future research directions are identified for graph neural networks in financial fraud detection?",
+   "answer_all": [
+    "future|direction|challenge|open"
+   ],
+   "related_any": [
+    "challenge|future"
+   ]
+  },
+  {
+   "query_id": "fr046",
+   "shape": "comparison",
+   "targets": [
+    "b8f6924f77",
+    "4141c16a26"
+   ],
+   "query": "How do the approach for inconsistent neighbours in GNN fraud detection and the dynamic relation-attentive GNN differ in how they aggregate information across relations?",
+   "answer_all": [
+    "relation",
+    "aggregat|attention"
+   ],
+   "related_any": [
+    "relation"
+   ]
+  },
+  {
+   "query_id": "fr047",
+   "shape": "comparison",
+   "targets": [
+    "2f17648050",
+    "f6133bc16c"
+   ],
+   "query": "How do DPF-GFD and DHMP differ in the way they handle heterophily in fraud graphs?",
+   "answer_all": [
+    "heterophil",
+    "filter|channel|message passing"
+   ],
+   "related_any": [
+    "heterophil"
+   ]
+  },
+  {
+   "query_id": "fr048",
+   "shape": "comparison",
+   "targets": [
+    "12b078eb0f",
+    "b214ba014f"
+   ],
+   "query": "How do ADAPT and GraphFC differ in their approach to customs fraud detection?",
+   "answer_all": [
+    "customs",
+    "exploration|drift|graph|label"
+   ],
+   "related_any": [
+    "customs"
+   ]
+  },
+  {
+   "query_id": "fr049",
+   "shape": "comparison",
+   "targets": [
+    "84ccbefe24",
+    "f0aecca4b0"
+   ],
+   "query": "How do the SMOTE-based neural network and the optimized machine learning tools approach differ in handling class imbalance for fraud detection?",
+   "answer_all": [
+    "imbalanc|SMOTE",
+    "sampl|minority"
+   ],
+   "related_any": [
+    "imbalanc|SMOTE"
+   ]
+  },
+  {
+   "query_id": "fr050",
+   "shape": "comparison",
+   "targets": [
+    "7c4a80b8af",
+    "0b390ea2fa"
+   ],
+   "query": "How do the locally interpretable one-class anomaly detector and Deep Symbolic Classification differ in how they explain fraud predictions?",
+   "answer_all": [
+    "explain|interpret",
+    "SHAP|symbolic|expression|local|feature"
+   ],
+   "related_any": [
+    "explain|interpret"
+   ]
+  },
+  {
+   "query_id": "un001",
+   "shape": "unanswerable",
+   "targets": [],
+   "query": "How does differential privacy get applied to fraud detection models?",
+   "answer_all": [],
+   "related_any": [],
+   "note": "Verified 2026-09-19: no chunk in the corpus mentions differential privacy; BM25 hits are generic 'fraud detection' vocabulary overlap only."
+  },
+  {
+   "query_id": "un002",
+   "shape": "unanswerable",
+   "targets": [],
+   "query": "How do federated learning approaches handle cross-bank fraud detection without sharing raw data?",
+   "answer_all": [],
+   "related_any": [],
+   "note": "Verified 2026-09-19: no chunk mentions federated learning."
+  },
+  {
+   "query_id": "un003",
+   "shape": "unanswerable",
+   "targets": [],
+   "query": "What regulatory penalties has the SEC imposed on companies for financial fraud?",
+   "answer_all": [],
+   "related_any": [],
+   "note": "Verified 2026-09-19: corpus is purely technical/ML; no legal or regulatory-enforcement content."
+  },
+  {
+   "query_id": "un004",
+   "shape": "unanswerable",
+   "targets": [],
+   "query": "What was Enron's accounting fraud scheme and how could machine learning have detected it?",
+   "answer_all": [],
+   "related_any": [],
+   "note": "Verified 2026-09-19: no mention of Enron anywhere in the corpus."
+  }
+ ]
+}

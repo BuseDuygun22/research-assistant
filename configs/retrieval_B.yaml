@@ -1,0 +1,36 @@
+# Track A / Buse — vector store + hybrid search
+# This file defines the contract Sude's MCP tools call into. Changing `top_k`
+# or the result shape is a cross-track change: tell her first.
+
+vector_store:
+  backend: chroma              # alt: qdrant (better native hybrid + filtering, needs Docker)
+  persist_dir: data/chroma
+  collection: papers_v2        # bumped for the sha256/nested-ChunkMetadata chunk_id scheme (2026-09-18)
+  distance: cosine
+
+bm25:
+  backend: rank_bm25           # in-memory; fine at this corpus size
+  index_path: data/bm25_index_B.pkl
+  k1: 1.5
+  b: 0.75
+  tokenizer: simple_lower      # alt: spacy_lemma
+  stopwords: english
+
+hybrid:
+  fusion: rrf                  # reciprocal rank fusion. alt: weighted_sum (needs score normalisation)
+  rrf_k: 60                    # standard constant; sweep [10, 60, 100] in notebook 04
+  candidates_per_arm: 30       # each arm returns this many before fusion
+  candidate_k: 20              # size of the fused candidate set handed to the reranker
+  weights:                     # only used when fusion == weighted_sum
+    bm25: 0.4
+    vector: 0.6
+  dedupe_by: chunk_id
+
+rerank:
+  active: baseline             # baseline | dpo  -> resolved by reranker/registry_B.py
+  top_k: 5                     # what the MCP tools actually return
+  max_chars_per_result: 1200
+
+query:
+  expand: false                # keep off until it is measured in notebook 06
+  min_score: 0.0               # no hard filter; ranking decides
