@@ -15,8 +15,10 @@ tools must surface a recoverable error to the agent, not a transport failure.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
@@ -39,7 +41,33 @@ from research_assistant.observability.tracing_S import KIND_TOOL, span
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="research-assistant retrieval API", version="0.1.0")
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):  # type: ignore[no-untyped-def]
+    """Warm the retrieval backend before the first request arrives.
+
+    Track A loads its BM25 index, vector store and embedding model lazily, so the
+    first query in a fresh process can take far longer than `tool_deadline_seconds`
+    (over a minute on a cold Windows machine) and would be reported to the agent as
+    a timeout. `serve_S.py` already warms via `readiness()`, but a process started
+    any other way (`uvicorn ...:app`, `--reload`, a worker pool) skips that, so the
+    warm-up lives on the app itself. Run in a thread: it blocks, and it must not
+    stall the event loop. A failure is logged, never raised - `/ready` is what
+    reports an unhealthy backend, and refusing to start would hide why.
+    """
+
+    def _warm() -> None:
+        get_backend().retrieve(RetrievalRequest(query="warm up", top_k=1))
+
+    try:
+        await asyncio.to_thread(_warm)
+        logger.info("retrieval backend warmed")
+    except Exception:  # noqa: BLE001
+        logger.exception("retrieval warm-up failed; /ready will report the backend state")
+    yield
+
+
+app = FastAPI(title="research-assistant retrieval API", version="0.1.0", lifespan=_lifespan)
 
 
 @app.get("/health", response_model=HealthStatus)
@@ -196,9 +224,8 @@ def summarize_section(payload: SummarizeSectionInput) -> SummarizeSectionOutput:
             "focus question, say so explicitly rather than filling the gap."
         )
         user = (
-            (f"Focus question: {payload.focus}\n\n" if payload.focus else "")
-            + f"Excerpts:\n{body}\n\nWrite at most {payload.max_words} words."
-        )
+            f"Focus question: {payload.focus}\n\n" if payload.focus else ""
+        ) + f"Excerpts:\n{body}\n\nWrite at most {payload.max_words} words."
         try:
             summary = with_deadline(
                 "summarize_section",
