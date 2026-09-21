@@ -141,6 +141,13 @@ def _parse_range(expr: str, ids: list[str]) -> list[str]:
     lo, hi = expr.split("-", 1)
     return [i for i in ids if lo <= i <= hi]
 
+CANDIDATE_K_OPTION = typer.Option(20, help="Fused candidate set size to pool")
+PER_ARM_OPTION = typer.Option(20, help="Top-n from each arm to pool separately")
+VIEW_OPTION = typer.Option(
+    "", help="Print the reading view for a query or range, e.g. fr001-fr010, and exit"
+)
+VIEW_PER_PAPER_OPTION = typer.Option(10, help="Chunks shown per target paper in --view")
+
 
 @app.command()
 def main(
