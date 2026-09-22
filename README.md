@@ -1,5 +1,7 @@
 # Research Assistant
 
+[![ci](https://github.com/BuseDuygun22/research-assistant/actions/workflows/ci_S.yml/badge.svg)](https://github.com/BuseDuygun22/research-assistant/actions/workflows/ci_S.yml)
+
 A retrieval-augmented research assistant for the fraud-detection literature. Ask a question, and it returns a draft in which every factual claim is tied to a verifiable span of a source paper, or it says plainly that the corpus cannot answer, or it hands the case to a human with the reason attached.
 
 The interesting part is not that it retrieves and writes. It is that the system **checks itself and measures itself**: an editor that diagnoses *why* a draft failed and routes the repair to the right component, a judge that is calibrated against human labels, and a promotion gate that refuses to call a change an improvement unless the statistics support it.
@@ -498,7 +500,9 @@ research-assistant/
 ├── src/research_assistant/
 │   ├── contracts/          # _J   shared Pydantic contracts (the seam)
 │   ├── config_J.py         # _J   Settings (RA_* env) and YAML config loading
-│   ├── llm_S.py            # _S   LLM protocol: stub, Anthropic, Gemini
+│   ├── llm_S.py            # _S   LLM protocol: stub, Ollama, Anthropic, Gemini
+│   ├── prompts_S.py        # _S   few-shot response-format examples per prompt
+│   ├── ask_S.py            # _S   `python -m research_assistant.ask_S` — the pipeline CLI
 │   ├── ingestion/          # _B   parse, chunk, embed, pipeline
 │   ├── retrieval/          # _B   BM25, vector store, RRF fusion, service
 │   ├── reranker/           # _B   baseline, preference pairs, DPO training, registry
@@ -512,12 +516,14 @@ research-assistant/
 │   ├── datasets/           # _B   queries, qrels, drafts
 │   └── thresholds_B.yaml   # _B   promotion thresholds
 ├── configs/                #      ingestion, retrieval, reranker, agents
-├── scripts/                #      ingest, pairs, train, serve, label, smoke-test
+├── scripts/                #      ingest, pairs, train, serve, label, smoke-test,
+│                           #      calibrate_judge_S (judge kappa vs. human labels)
 ├── notebooks/              # _B   stage-by-stage reasoning, 00 to 10
 ├── docs/                   #      architecture, contracts, rubric, reviews, guides
 ├── tests/                  #      unit, contract, integration, adversarial fixtures
 ├── docker/                 # _S   image and compose file
-└── .github/                # _S   CI, eval gate, deploy, PR template
+├── .env.example            #      every RA_* setting, safe defaults, no real keys
+└── .github/                # _S   CI, eval gate, deploy, CODEOWNERS, PR template
 ```
 
 The notebooks in `notebooks/` hold the reasoning and the rejected alternatives for each Track A stage; the modules in `src/` are the promoted, tested versions.
