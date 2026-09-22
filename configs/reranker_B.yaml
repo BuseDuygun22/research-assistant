@@ -42,7 +42,7 @@ train:
   output_dir: models/reranker_dpo_B
 
 mlflow:
-  tracking_uri: file:./mlruns
+  tracking_uri: sqlite:///mlflow.db
   experiment: reranker_dpo_B
   log_params: true
   log_eval_metrics: true       # nDCG@5, MRR, citation precision on the held-out set

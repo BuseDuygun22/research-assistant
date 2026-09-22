@@ -77,7 +77,9 @@ def main(
     topic: str = typer.Option(
         None, help="Substring filter on title+abstract, e.g. 'summarization'. Empty = no filter."
     ),
-    min_questions: int = typer.Option(1, help="Drop papers with fewer answerable questions than this"),
+    min_questions: int = typer.Option(
+        1, help="Drop papers with fewer answerable questions than this"
+    ),
     seed: int = 42,
 ) -> None:
     raw_dir = REPO / "data" / "raw_qasper"
@@ -86,7 +88,7 @@ def main(
     for d in (raw_dir, interim, eval_dir):
         d.mkdir(parents=True, exist_ok=True)
 
-    print(f"downloading QASPER (parquet convert branch)...")
+    print("downloading QASPER (parquet convert branch)...")
     ds = _load_all()
     all_papers = list(ds["train"]) + list(ds["validation"]) + list(ds["test"])
     print(f"total QASPER papers available: {len(all_papers)}")
@@ -162,7 +164,7 @@ def main(
                 "dropped": False,
             }
         )
-        for section, paras in zip(sections, para_lists):
+        for section, paras in zip(sections, para_lists, strict=False):
             sec_name = section or "UNTITLED_SECTION"
             is_refs = bool(re.search(r"reference|bibliograph|acknowledg", sec_name.lower()))
             for para in paras:
@@ -180,7 +182,12 @@ def main(
                 ordinal += 1
 
         for q_idx, (question, q_id, answers) in enumerate(
-            zip(paper["qas"]["question"], paper["qas"]["question_id"], paper["qas"]["answers"])
+            zip(
+                paper["qas"]["question"],
+                paper["qas"]["question_id"],
+                paper["qas"]["answers"],
+                strict=False,
+            )
         ):
             qid = f"{pid}_q{q_idx}"
             all_unanswerable = all(a["unanswerable"] for a in answers["answer"])
@@ -257,7 +264,7 @@ def main(
     if zero_qrel:
         print(f"  WARNING: {zero_qrel} answerable queries matched no paragraph "
               f"verbatim (likely table/figure-only evidence) and have zero qrels")
-    print(f"\nwrote:")
+    print("\nwrote:")
     for p in [
         "data/corpus_manifest_B.jsonl",
         "data/interim/pages.jsonl",

@@ -27,8 +27,13 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install
-        run: pip install -e ".[serve,agents,eval,dev]"
+      - name: Install (CPU-only torch first)
+        # sentence-transformers pulls torch, and the default Linux wheel drags in
+        # ~2 GB of CUDA libraries a CPU runner never uses. Installing the CPU wheel
+        # first makes pip treat the requirement as already satisfied.
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[serve,agents,judge,eval,dev]"
 
       - name: Lint
         run: ruff check src eval tests scripts
@@ -42,7 +47,10 @@ jobs:
       - name: Tests
         run: pytest -q
 
-      - name: Smoke the pipeline end to end
+      - name: Smoke the agent graph (stub LLM, stub retrieval)
+        env:
+          RA_JUDGE_BACKEND: stub
+          RA_RETRIEVAL_BACKEND: stub
         # Catches the failure unit tests cannot: every piece passing on its own
         # while they do not fit together.
         run: |
@@ -53,3 +61,62 @@ jobs:
           assert state.budget.steps_used <= state.budget.max_steps
           print("outcome:", state.outcome, "| steps:", len(state.decisions))
           PY
+
+  # The real data path: PDFs -> parse -> chunk -> embed -> Chroma + BM25 -> retrieval
+  # -> agents -> cited answer, with MLflow recording each stage's run. Uses Buse's
+  # seven synthetic PDFs because CI must not download the 30-paper corpus on every
+  # push; the stub LLM keeps it free and deterministic. A green `check` job proves
+  # the pieces work alone; this job proves they work together on a real index.
+  pipeline:
+    runs-on: ubuntu-latest
+    env:
+      RA_JUDGE_BACKEND: stub
+      RA_RETRIEVAL_BACKEND: track_a
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install (CPU-only torch first)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[serve,agents,judge,eval,dev]"
+
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-bge-small-en-v1.5
+
+      - name: Stage the synthetic corpus
+        run: make PY=python demo-corpus
+
+      - name: Ingest (parse, chunk, embed, index)
+        run: python scripts/ingest_B.py --stage all
+
+      - name: Ask a question against the real index
+        run: |
+          python -m research_assistant.ask_S --json --mlflow             "How does SparseLoom achieve structured sparsity?" | tee ask.json
+          python - <<'PY'
+          import json
+          r = json.load(open("ask.json"))
+          assert r["retrieval_backend"] == "TrackARetrieval", r["retrieval_backend"]
+          assert r["outcome"] == "accepted", r["outcome"]
+          assert r["references"] and all(x["found"] for x in r["references"])
+          PY
+
+      - name: Retrieval eval harness, logged to MLflow
+        run: python -m eval.metrics.retrieval_B --example --stub --min-queries 0 --mlflow
+
+      - name: Upload MLflow store
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow
+          path: |
+            mlflow.db
+            mlartifacts/
+          if-no-files-found: warn

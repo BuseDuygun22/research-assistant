@@ -27,6 +27,7 @@ from research_assistant.contracts.mcp_tools_J import SearchPapersInput
 from research_assistant.llm_S import LLMError, get_llm
 from research_assistant.mcp_server.api_S import search_papers
 from research_assistant.observability.tracing_S import KIND_AGENT, span
+from research_assistant.prompts_S import with_examples
 
 from ..state_S import AgentState
 
@@ -100,7 +101,9 @@ def reformulate(state: AgentState) -> str:
     for attempt in range(2):
         try:
             reply = get_llm().complete_json(
-                system=REFORMULATE_SYSTEM, user=user, schema=_Reformulation
+                system=with_examples(REFORMULATE_SYSTEM, "reformulate"),
+                user=user,
+                schema=_Reformulation,
             )
         except LLMError:
             logger.warning("reformulation failed; falling back to the raw question")

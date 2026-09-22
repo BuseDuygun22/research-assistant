@@ -28,21 +28,28 @@ from collections.abc import Iterator
 
 import pytest
 
+_PINNED = {"RA_JUDGE_BACKEND": "stub", "RA_RETRIEVAL_BACKEND": "stub"}
+"""Both are pinned, not just the LLM. Track B's tests read the retrieval backend
+through `get_backend()`, which picks Track A whenever an index exists - so the
+same test passed on a machine with a built index and failed on a fresh clone,
+and both results were correct for their machine."""
+
 
 @pytest.fixture(autouse=True, scope="session")
-def _force_stub_judge_backend() -> Iterator[None]:
+def _pin_stub_backends() -> Iterator[None]:
     import os
 
     from research_assistant.config_J import get_settings
 
-    previous = os.environ.get("RA_JUDGE_BACKEND")
-    os.environ["RA_JUDGE_BACKEND"] = "stub"
+    previous = {name: os.environ.get(name) for name in _PINNED}
+    os.environ.update(_PINNED)
     get_settings.cache_clear()
     try:
         yield
     finally:
-        if previous is None:
-            os.environ.pop("RA_JUDGE_BACKEND", None)
-        else:
-            os.environ["RA_JUDGE_BACKEND"] = previous
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
         get_settings.cache_clear()

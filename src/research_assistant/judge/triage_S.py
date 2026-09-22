@@ -31,6 +31,7 @@ from research_assistant.contracts.judge_J import (
 from research_assistant.contracts.retrieval_J import RetrievedChunk
 from research_assistant.llm_S import LLMClient, LLMError, get_llm
 from research_assistant.observability.tracing_S import KIND_JUDGE, span
+from research_assistant.prompts_S import with_examples
 
 TRIAGE_SYSTEM = """You assess whether a set of retrieved passages can answer a question.
 
@@ -125,7 +126,7 @@ def assess_evidence(
     with span("judge.triage", KIND_JUDGE, n_chunks=len(evidence)) as sp:
         try:
             reply = (llm or get_llm()).complete_json(
-                system=TRIAGE_SYSTEM,
+                system=with_examples(TRIAGE_SYSTEM, "triage"),
                 user=f"QUESTION:\n{query}\n\nPASSAGES:\n{context}",
                 schema=_TriageReply,
             )

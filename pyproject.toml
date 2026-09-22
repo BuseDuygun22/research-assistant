@@ -15,6 +15,7 @@ dependencies = [
   "python-dotenv>=1.0",
   "typer>=0.12",
   "rich>=13.7",
+  "httpx>=0.27",
   # --- Track A: ingestion ---
   "pymupdf>=1.24",          # PDF text + page numbers + font sizes (section heuristics)
   "tiktoken>=0.7",          # token-budgeted chunking
@@ -97,7 +98,23 @@ asyncio_mode = "auto"
 
 [tool.mypy]
 python_version = "3.11"
+ignore_missing_imports = true
 # Without the plugin mypy does not know Field(None, ...) gives a default,
 # and reports every optional contract field as a missing argument.
 plugins = ["pydantic.mypy"]
-ignore_missing_imports = true
+
+# numpy ships stubs written with 3.12+ `type` statements. Analysing them under
+# python_version 3.11 is a syntax error in *their* file, which aborts the whole run
+# before any of our code is checked - and hides every real error behind it.
+[[tool.mypy.overrides]]
+module = ["numpy.*"]
+follow_imports = "skip"
+follow_imports_for_stubs = true
+ignore_errors = true
+
+# pymupdf's stubs omit Document.__iter__, which exists at runtime.
+[[tool.mypy.overrides]]
+module = ["pymupdf.*", "fitz.*"]
+follow_imports = "skip"
+follow_imports_for_stubs = true
+ignore_errors = true

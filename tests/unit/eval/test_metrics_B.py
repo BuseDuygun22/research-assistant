@@ -399,7 +399,8 @@ def test_load_eval_set_enforces_the_minimum_size(tmp_path: Path) -> None:
 
 def test_evaluate_scores_a_perfect_retriever(tiny_set: EvalSet) -> None:
     def perfect(query: str, candidate_k: int = 20) -> list[dict[str, str]]:
-        return [{"chunk_id": c} for c in ({"question one": ["a", "b"], "question two": ["m"]}[query])]
+        lookup = {"question one": ["a", "b"], "question two": ["m"]}
+        return [{"chunk_id": c} for c in lookup[query]]
 
     per_query, summary = evaluate(perfect, k=5, candidate_k=20, eval_set=tiny_set)
     names = metric_names(5, 20)

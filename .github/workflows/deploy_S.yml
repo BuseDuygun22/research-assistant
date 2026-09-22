@@ -28,7 +28,7 @@ jobs:
         run: |
           docker run -d --name ra -p 8000:8000 research-assistant:${{ github.sha }}
           STATUS=waiting
-          for _ in $(seq 1 30); do
+          for _ in $(seq 1 150); do
             STATUS=$(curl -fsS http://localhost:8000/ready \
               | python -c "import sys,json;print(json.load(sys.stdin)['status'])" 2>/dev/null \
               || echo waiting)

@@ -804,7 +804,11 @@ class CompareVerdict:
             mark = "ok  " if c.passed else "FAIL"
             val = "n/a" if c.value is None else f"{c.value:.4f}"
             detail = "; ".join(c.reasons) if c.reasons else ""
-            base = "" if c.baseline is None else f" (champion {c.baseline:.4f}, delta {c.delta:+.4f})"
+            base = (
+                ""
+                if c.baseline is None
+                else f" (champion {c.baseline:.4f}, delta {c.delta:+.4f})"
+            )
             lines.append(f"  [{mark}] {c.metric}={val}{base} {detail}".rstrip())
         return "\n".join(lines)
 
@@ -988,7 +992,7 @@ def log_to_mlflow(
         run_name: MLflow run name.
         experiment: MLflow experiment name.
         tracking_uri: Defaults to ``mlflow.tracking_uri`` in ``configs/reranker_B.yaml``,
-            then to ``file:./mlruns``.
+            then to ``sqlite:///mlflow.db``.
         per_query: Logged as ``per_query.csv``.
         verdict: Logged as ``gate_verdict.json`` plus a ``gate_passed`` tag.
         tags: Extra MLflow tags.
@@ -1010,7 +1014,7 @@ def log_to_mlflow(
             tracking_uri = load_config("reranker").get("mlflow", {}).get("tracking_uri")
         except Exception:
             tracking_uri = None
-        tracking_uri = tracking_uri or "file:./mlruns"
+        tracking_uri = tracking_uri or "sqlite:///mlflow.db"
 
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment)
@@ -1078,7 +1082,9 @@ def _stub_search_fn(eval_set: EvalSet, *, drop_first: bool = False) -> SearchFn:
     rel = eval_set.rel_by_query
     by_text = {q.query: q.query_id for q in eval_set.queries}
 
-    def search(query: str, candidate_k: int = DEFAULT_CANDIDATE_K, **_: Any) -> list[dict[str, str]]:
+    def search(
+        query: str, candidate_k: int = DEFAULT_CANDIDATE_K, **_: Any
+    ) -> list[dict[str, str]]:
         qid = by_text.get(query)
         labels = rel.get(qid or "", {})
         ordered = [cid for cid, _g in sorted(labels.items(), key=lambda kv: -kv[1])]
@@ -1115,7 +1121,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="module:attr of the search function to score",
     )
     ap.add_argument("--k", type=int, default=None, help="top-k (default: config rerank.top_k)")
-    ap.add_argument("--candidate-k", type=int, default=None, help="default: config hybrid.candidate_k")
+    ap.add_argument(
+        "--candidate-k", type=int, default=None, help="default: config hybrid.candidate_k"
+    )
     ap.add_argument("--label", default="baseline", help="run label")
     ap.add_argument("--min-queries", type=int, default=None, help="0 disables the size check")
     ap.add_argument("--mlflow", action="store_true", help="log this run to MLflow")

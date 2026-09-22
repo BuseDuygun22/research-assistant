@@ -72,15 +72,24 @@ def test_preference_pairs_exclude_test_queries():
     the system on the set that is supposed to grade it."""
     ds = dataset()
     test_queries = {q.query.strip().lower() for q in ds.for_split("test")}
-    pairs_path = REPO_ROOT / "data" / "preference_pairs.jsonl"
-    if not pairs_path.exists() or pairs_path.stat().st_size == 0:
+    # A glob, not one filename: Track A writes `preference_pairs_B.jsonl` and a
+    # gap-suffixed variant per sweep (`..._B_gap2.jsonl`). This guard used to read
+    # `preference_pairs.jsonl`, a name nothing writes - so it skipped forever and
+    # protected nothing, which is the failure a leakage test exists to prevent.
+    pair_files = [
+        p
+        for p in sorted((REPO_ROOT / "data").glob("preference_pairs*.jsonl"))
+        if p.stat().st_size > 0
+    ]
+    if not pair_files:
         pytest.skip("no preference pairs generated yet")
 
     import json
 
     leaked = [
-        json.loads(line)["query"]
-        for line in pairs_path.read_text(encoding="utf-8").splitlines()
+        (path.name, json.loads(line)["query"])
+        for path in pair_files
+        for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip() and json.loads(line).get("query", "").strip().lower() in test_queries
     ]
     assert not leaked, f"preference pairs built from test queries: {leaked[:3]}"

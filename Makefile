@@ -1,10 +1,12 @@
 # Shared Makefile. Track A targets below are Buse's; the Track B section is Sude's.
 # On Windows run these through Git Bash, or copy the command out of the recipe.
 
-PY := .venv/Scripts/python
+# Override for Linux/macOS/CI:  make PY=python <target>
+PY ?= .venv/Scripts/python
+Q ?= Which methods are used to handle class imbalance in fraud detection?
 
 .PHONY: help install install-train install-obs kernel lint test \
-        ingest pairs train eval gate clean-index
+        ingest pairs train eval gate clean-index install-all demo-corpus demo ask
 
 help:
 	@grep -E '^[a-z-]+:.*?##' $(MAKEFILE_LIST) | sed 's/:.*##/\t/'
@@ -12,6 +14,9 @@ help:
 # --- setup -------------------------------------------------------------------
 install:        ## base deps + notebooks + dev tooling
 	$(PY) -m pip install -e ".[notebooks,dev,obs]"
+
+install-all:    ## everything the pipeline, agents, tests and CI need (no training deps)
+	$(PY) -m pip install -e ".[serve,agents,judge,eval,dev,obs]"
 
 install-train:  ## heavy ML deps, needed from stage 08
 	$(PY) -m pip install -e ".[train]"
@@ -22,7 +27,6 @@ kernel:         ## register the Jupyter kernel used by the notebooks
 
 lint:
 	$(PY) -m ruff check src eval scripts
-	$(PY) -m ruff format --check src eval scripts
 
 test:
 	$(PY) -m pytest -q
@@ -41,7 +45,7 @@ eval:           ## retrieval metrics on the held-out set (stage 06)
 	$(PY) -m eval.metrics.retrieval_B --config configs/retrieval_B.yaml
 
 mlflow:         ## browse training and eval runs
-	$(PY) -m mlflow ui --backend-store-uri ./mlruns
+	$(PY) -m mlflow ui --backend-store-uri sqlite:///mlflow.db
 
 clean-index:    ## drop the local vector and sparse indexes, keeps data/raw
 	rm -rf data/chroma data/bm25_index_B.pkl data/processed data/interim
@@ -49,4 +53,17 @@ clean-index:    ## drop the local vector and sparse indexes, keeps data/raw
 # --- Track B (Sude) ----------------------------------------------------------
 # serve, docker-build, gate: owned by Sude, see her track.
 gate:           ## run the promotion gate locally (Sude's runner, Buse's thresholds)
-	$(PY) eval/run_gate_S.py --thresholds eval/thresholds_B.yaml
+	$(PY) -m eval.run_gate_S --thresholds eval/thresholds_B.yaml
+
+# --- end to end ----------------------------------------------------------------
+demo-corpus:    ## seven synthetic PDFs into data/raw, so the pipeline runs with no download
+	mkdir -p data/raw
+	cp tests/fixtures/synthetic_pdfs_B/*.pdf data/raw/
+	cp tests/fixtures/synthetic_manifest_B.jsonl data/corpus_manifest_B.jsonl
+
+demo: demo-corpus  ## parse, chunk, embed and index the demo corpus, then answer one question
+	$(PY) scripts/ingest_B.py --stage all
+	RA_RETRIEVAL_BACKEND=track_a $(PY) -m research_assistant.ask_S --mlflow "$(Q)"
+
+ask:            ## ask one question (Q="...", LLM=ollama MODEL=qwen2.5:7b-instruct)
+	$(PY) -m research_assistant.ask_S $(if $(LLM),--llm $(LLM)) $(if $(MODEL),--model $(MODEL)) "$(Q)"

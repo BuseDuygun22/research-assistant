@@ -175,7 +175,9 @@ class TestParsePdf:
     def test_references_section_is_flagged_dropped(self, corpus, ingestion_config):
         paper = corpus["papers"][0]
         records, _ = parse_pdf(
-            RAW_DIR / paper["filename"], paper["paper_id"], ingestion_config["parse"]["drop_sections"]
+            RAW_DIR / paper["filename"],
+            paper["paper_id"],
+            ingestion_config["parse"]["drop_sections"],
         )
         ref_records = [r for r in records if r.section.strip().lower() == "references"]
         assert ref_records, "fixture should contain a References section"
@@ -188,7 +190,9 @@ class TestParsePdf:
         """
         for paper in corpus["papers"]:
             records, _ = parse_pdf(
-                RAW_DIR / paper["filename"], paper["paper_id"], ingestion_config["parse"]["drop_sections"]
+                RAW_DIR / paper["filename"],
+                paper["paper_id"],
+                ingestion_config["parse"]["drop_sections"],
             )
             detected = {r.section.strip() for r in records}
             expected = set(paper["sections"])
@@ -290,7 +294,9 @@ class TestChunking:
         chunks = chunk_pages(pages, config=ingestion_config)
         enc = get_encoder("cl100k_base")
         tiny_unit_count = sum(1 for u in units if count_tokens(u.text, enc) < min_tokens)
-        assert tiny_unit_count > 0, "fixture should contain at least one sub-floor unit (front matter)"
+        assert tiny_unit_count > 0, (
+            "fixture should contain at least one sub-floor unit (front matter)"
+        )
         # Front matter's own text (paper title / venue line) should not appear as an
         # isolated chunk; it should have been folded into the section that follows.
         front_matter_only = [
@@ -357,7 +363,10 @@ class TestPackPieces:
         # sentences when no whole paragraph fits the overlap budget, so a paragraph with
         # no punctuation (all one "sentence") can never produce overlap, regardless of
         # length -- which is exactly what a first draft of this test got wrong.
-        return " ".join(f"{tag} sentence {i} has several distinct words in it." for i in range(n_sentences))
+        return " ".join(
+            f"{tag} sentence {i} has several distinct words in it."
+            for i in range(n_sentences)
+        )
 
     def _spans(self, paras: list[str]) -> list:
         # pack_pieces takes (text, char_start, char_end) triples now, sourced from a

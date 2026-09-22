@@ -22,6 +22,7 @@ from research_assistant.config_J import get_settings
 from research_assistant.judge.triage_S import describe_conflicts
 from research_assistant.llm_S import get_llm
 from research_assistant.observability.tracing_S import KIND_AGENT, span
+from research_assistant.prompts_S import with_examples
 
 from ..state_S import AgentState, ClaimSpan, Draft
 
@@ -110,7 +111,7 @@ def writer(state: AgentState) -> AgentState:
                 f"CLAIMS TO FIX:\n{fixes}\n\n"
                 f"KEEP EXACTLY: {brief['keep']}"
             )
-            system = REVISE_SYSTEM
+            system = with_examples(REVISE_SYSTEM, "revise")
         else:
             user = f"QUESTION:\n{state.question}\n\nPASSAGES:\n{context_window(state)}"
             # Conflicts found at triage travel with the prompt. Left to itself a
@@ -118,7 +119,7 @@ def writer(state: AgentState) -> AgentState:
             # faithful to the passage it picked.
             if state.assessment is not None and state.assessment.has_conflicts:
                 user += "\n\nCONFLICTS:\n" + describe_conflicts(state.assessment)
-            system = WRITE_SYSTEM
+            system = with_examples(WRITE_SYSTEM, "write")
 
         out = get_llm().complete_json(system=system, user=user, schema=_DraftOut)
         revision = len(state.drafts)

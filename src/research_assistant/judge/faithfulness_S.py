@@ -33,6 +33,7 @@ from research_assistant.contracts.judge_J import (
 from research_assistant.contracts.retrieval_J import RetrievedChunk
 from research_assistant.llm_S import LLMClient, get_llm
 from research_assistant.observability.tracing_S import KIND_JUDGE, span
+from research_assistant.prompts_S import with_examples
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "faithfulness_S.md"
 
@@ -122,7 +123,7 @@ def check_faithfulness(
     )
     with span("judge.faithfulness", KIND_JUDGE, draft_id=draft_id) as sp:
         reply = (llm or get_llm()).complete_json(
-            system=PROMPT_PATH.read_text(encoding="utf-8"),
+            system=with_examples(PROMPT_PATH.read_text(encoding="utf-8"), "faithfulness"),
             user=f"RETRIEVED CONTEXT:\n{context}\n\nDRAFT:\n{draft}",
             schema=_FaithfulnessReply,
         )
@@ -171,7 +172,7 @@ def check_answer(
     )
     with span("judge.answer", KIND_JUDGE, draft_id=draft_id) as sp:
         reply = (llm or get_llm()).complete_json(
-            system=system,
+            system=with_examples(system, "answer"),
             user=f"QUESTION:\n{query}\n\nRETRIEVED CONTEXT:\n{context}\n\nDRAFT:\n{draft}",
             schema=_AnswerReply,
         )

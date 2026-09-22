@@ -207,16 +207,44 @@ _backend: RetrievalBackend | None = None
 
 
 def get_backend() -> RetrievalBackend:
-    """Prefer Track A; fall back to the stub with a warning, never silently."""
+    """Prefer Track A; fall back to the stub with a warning, never silently.
+
+    Selection probes with a real query rather than only importing. Importability
+    and serveability are different questions, and the gap between them is real:
+    `RetrievalService` constructs fine with no index on disk, because its
+    collaborators are lazy properties. Binding on the import alone selected a
+    backend that raised on the first real query - `/ready` reported `error`,
+    every tool call failed, and the stub that exists for exactly this situation
+    went unused.
+
+    `readiness()` already states the rule this follows: *a backend that imports
+    but cannot answer is not ready, and only a live query distinguishes the
+    two*. That test belongs here too, where the choice is actually made.
+
+    `RA_RETRIEVAL_BACKEND` pins the choice. `stub` is what the test suite uses so
+    results do not depend on whether the machine running it has a built index;
+    `track_a` refuses to fall back, for a deployment that must not silently
+    serve the stub.
+    """
     global _backend
     if _backend is not None:
+        return _backend
+    choice = get_settings().retrieval_backend
+    if choice == "stub":
+        logger.info("Retrieval backend: stub (pinned by RA_RETRIEVAL_BACKEND)")
+        _backend = StubRetrieval()
         return _backend
     candidate = TrackARetrieval()
     try:
         candidate._bind()
+        # The probe: cheap (top_k=1) and paid once per process, since the result
+        # is cached in `_backend`. It also warms the lazy collaborators.
+        candidate.retrieve(RetrievalRequest(query="backend selection probe", top_k=1))
         _backend = candidate
         logger.info("Retrieval backend: Track A service (corpus=%s)", get_settings().corpus_version)
     except Exception as exc:  # noqa: BLE001
+        if choice == "track_a":
+            raise
         logger.warning(
             "Track A retrieval unavailable (%s) - using StubRetrieval. "
             "Eval numbers from this backend are NOT publishable.",

@@ -41,7 +41,7 @@ _FILES: dict[str, Path] = {
 }
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def load_config(name: str) -> dict[str, Any]:
     """Load one config by short name. Cached; call `load_config.cache_clear()` in tests."""
     try:
@@ -122,22 +122,41 @@ class Settings(BaseSettings):
     mcp_transport: Literal["stdio", "sse"] = "stdio"
     mcp_port: int = 8080
 
+    # --- retrieval backend -------------------------------------------------
+    retrieval_backend: Literal["auto", "stub", "track_a"] = Field(
+        "auto",
+        description="Which retrieval backend the tools use. 'auto' probes Track A "
+        "with a real query and falls back to the stub if it cannot answer. 'stub' "
+        "pins the deterministic stub - what the test suite uses, so a machine that "
+        "happens to have a built index cannot change what the tests exercise. "
+        "'track_a' requires the real service and raises rather than falling back.",
+    )
+
     # --- judge / generation -------------------------------------------------
-    judge_backend: Literal["stub", "anthropic", "gemini"] = Field(
+    judge_backend: Literal["stub", "ollama", "anthropic", "gemini"] = Field(
         "stub",
         description="'stub' is deterministic and free — the default so CI never "
-        "depends on a paid API. 'anthropic' and 'gemini' are both real backends; "
-        "which one a run uses is whoever's key is set, not a preference this repo "
-        "takes — Gemini's free tier is why it exists as an option at all.",
+        "depends on a paid API. 'ollama' runs a local model (e.g. Qwen) at no cost. "
+        "'anthropic' and 'gemini' are hosted backends; which one a run uses is "
+        "whoever's key is set, not a preference this repo takes.",
     )
-    # No single default is right for both real backends (a Claude model id is
-    # meaningless to Gemini and vice versa). This default assumes 'anthropic';
-    # set RA_JUDGE_MODEL in .env to a Gemini model id (e.g. gemini-flash-latest)
-    # when running on 'gemini', or get_llm() will hand that id to the wrong API.
+    # No single default is right for every backend (a Claude model id is
+    # meaningless to Gemini or Ollama). This default assumes 'anthropic'; set
+    # RA_JUDGE_MODEL to a Gemini model id or an Ollama tag (e.g. qwen2.5:7b-instruct)
+    # when running on 'gemini' / 'ollama', or get_llm() hands the id to the wrong API.
     judge_model: str = "claude-sonnet-5"
     judge_prompt_version: str = "v1"
     anthropic_api_key: str | None = None
     gemini_api_key: str | None = None
+    # 'ollama' runs a local model (Qwen by default) with no key, no quota, no egress.
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_timeout_seconds: float = Field(
+        300.0, gt=0.0, description="Local generation on a CPU/small GPU is slow; be generous."
+    )
+    ollama_num_ctx: int = Field(
+        8192, ge=2048, description="Context window. Ollama's own default (4096) truncates "
+        "a five-passage prompt with few-shot examples."
+    )
 
     # --- agent graph --------------------------------------------------------
     # Budgets are separate because the two revision types cost differently: a

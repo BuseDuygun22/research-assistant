@@ -316,6 +316,123 @@ class GeminiLLM:
                 raise LLMError(f"{schema.__name__} failed validation: {exc}") from exc
 
 
+class OllamaLLM:
+    """Local models (Qwen, Llama, ...) through Ollama's native /api/chat.
+
+    This is the zero-cost, zero-egress backend: nothing leaves the machine, so it
+    also answers the "who sees my data" question by construction. The native
+    endpoint is used rather than the OpenAI-compatible one because only the native
+    one accepts a JSON *schema* in `format`, which constrains decoding to the
+    contract model - the difference between a 7B model that usually returns
+    parseable JSON and one that always does.
+
+    Local models still break the contract in ways hosted ones rarely do (a stray
+    <think> block, prose around the JSON, a missing field), so `complete_json`
+    validates and retries once with the validation error fed back before it
+    raises. One retry, not a loop: a model that fails twice on the same prompt is
+    a model that cannot do the task, and the caller should hear that.
+    """
+
+    MIN_NUM_PREDICT = 512
+    JSON_ATTEMPTS = 2
+
+    def __init__(
+        self,
+        model: str,
+        base_url: str = "http://127.0.0.1:11434",
+        *,
+        temperature: float = 0.0,
+        timeout: float = 300.0,
+        num_ctx: int = 8192,
+        transport: Any = None,
+    ) -> None:
+        import httpx  # in the `serve` extra; imported lazily like the other SDKs
+
+        self.model = model
+        self.temperature = temperature
+        self.num_ctx = num_ctx
+        self._httpx = httpx
+        self._http = httpx.Client(
+            base_url=base_url.rstrip("/"), timeout=timeout, transport=transport
+        )
+
+    def _chat(
+        self,
+        system: str,
+        user: str,
+        max_tokens: int,
+        schema: dict[str, Any] | None = None,
+    ) -> str:
+        body: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "stream": False,
+            # Qwen3 spends its budget on a reasoning trace unless told not to; a
+            # server that predates the flag ignores it.
+            "think": False,
+            "options": {
+                "temperature": self.temperature,
+                "num_predict": max(max_tokens, self.MIN_NUM_PREDICT),
+                "num_ctx": self.num_ctx,
+            },
+        }
+        if schema is not None:
+            body["format"] = schema
+        try:
+            response = self._http.post("/api/chat", json=body)
+        except self._httpx.HTTPError as exc:
+            raise LLMError(
+                f"Cannot reach Ollama at {self._http.base_url} ({exc}). Start it with "
+                f"`ollama serve` and fetch the model with `ollama pull {self.model}`."
+            ) from exc
+        if response.status_code == 404:
+            raise LLMError(f"Ollama has no model {self.model!r}; run `ollama pull {self.model}`.")
+        if response.status_code >= 400:
+            raise LLMError(f"Ollama returned HTTP {response.status_code}: {response.text[:200]}")
+        payload = response.json()
+        if payload.get("error"):
+            raise LLMError(f"Ollama error: {payload['error']}")
+        text = str((payload.get("message") or {}).get("content") or "")
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+        if payload.get("done_reason") == "length":
+            raise LLMError(
+                f"Output truncated at num_predict={body['options']['num_predict']}; "
+                "raise max_tokens rather than parsing a cut-off answer."
+            )
+        if not text:
+            raise LLMError("Ollama returned an empty message.")
+        return text
+
+    def complete(self, system: str, user: str, max_tokens: int = 1024) -> str:
+        with span("llm.complete", KIND_LLM) as sp:
+            sp.set(model=self.model)
+            return self._chat(system, user, max_tokens)
+
+    def complete_json(
+        self, system: str, user: str, schema: type[SchemaT], max_tokens: int = 1024
+    ) -> SchemaT:
+        with span("llm.complete_json", KIND_LLM) as sp:
+            sp.set(model=self.model, schema=schema.__name__)
+            json_schema = schema.model_json_schema()
+            prompt = user
+            last: Exception | None = None
+            for attempt in range(self.JSON_ATTEMPTS):
+                text = self._chat(system, prompt, max_tokens, json_schema)
+                try:
+                    return schema.model_validate(_extract_json(text))
+                except (ValidationError, ValueError, LLMError) as exc:
+                    last = exc
+                    sp.set(retries=attempt + 1)
+                    prompt = (
+                        f"{user}\n\nYour previous reply was rejected: {str(exc)[:400]}\n"
+                        "Reply again with ONLY a JSON object that matches the schema."
+                    )
+            raise LLMError(f"{schema.__name__} failed validation after retry: {last}") from last
+
+
 _client: LLMClient | None = None
 
 
@@ -334,6 +451,14 @@ def get_llm() -> LLMClient:
             raise LLMError("judge_backend='gemini' but RA_GEMINI_API_KEY is unset")
         _client = GeminiLLM(s.judge_model, s.gemini_api_key)
         logger.info("LLM backend: gemini (%s)", s.judge_model)
+    elif s.judge_backend == "ollama":
+        _client = OllamaLLM(
+            s.judge_model,
+            s.ollama_base_url,
+            timeout=s.ollama_timeout_seconds,
+            num_ctx=s.ollama_num_ctx,
+        )
+        logger.info("LLM backend: ollama (%s @ %s)", s.judge_model, s.ollama_base_url)
     else:
         _client = StubLLM()
         logger.info("LLM backend: stub (deterministic, offline)")

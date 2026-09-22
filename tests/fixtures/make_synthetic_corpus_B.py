@@ -289,29 +289,29 @@ def _method(s: PaperSpec, n: int) -> list[str]:
         f"framing pay. We train it with a margin objective against the disagreement between "
         f"the cheap and expensive scorers, which requires no additional human annotation: "
         f"the supervision is manufactured from the two scorers that already exist.",
-        f"Training proceeds in two phases. The cheap and expensive scorers are trained "
-        f"jointly for the first phase, then frozen while the estimator is fitted. Freezing "
-        f"matters. When all three are trained end to end the estimator learns to mark "
-        f"everything as uncertain, because that minimises loss without ever being penalised "
-        f"for the compute it spends.",
+        "Training proceeds in two phases. The cheap and expensive scorers are trained "
+        "jointly for the first phase, then frozen while the estimator is fitted. Freezing "
+        "matters. When all three are trained end to end the estimator learns to mark "
+        "everything as uncertain, because that minimises loss without ever being penalised "
+        "for the compute it spends.",
         f"Inference is a single forward pass for the majority of inputs. On {s.dataset} the "
         f"expensive scorer fires on roughly one input in five, which is what makes {s.method} "
         f"runnable on {s.hardware} at all. We provide the exact thresholds and the "
         f"schedule used for every reported number in the supplementary material.",
-        f"The cheap scorer is a two-layer projection over pooled encoder states. We chose "
-        f"pooling over a learned attention head after finding that the two performed within "
-        f"noise of one another on validation, and pooling has no parameters to tune. Where "
-        f"two designs tie, we take the one with fewer knobs, because every knob is a future "
-        f"source of irreproducibility.",
+        "The cheap scorer is a two-layer projection over pooled encoder states. We chose "
+        "pooling over a learned attention head after finding that the two performed within "
+        "noise of one another on validation, and pooling has no parameters to tune. Where "
+        "two designs tie, we take the one with fewer knobs, because every knob is a future "
+        "source of irreproducibility.",
         f"The expensive scorer is a full cross-attention pass over the input pair. It is the "
         f"same architecture as {s.baseline}, deliberately, so that any difference in the "
         f"reported {s.metric} is attributable to the routing and not to a better backbone. "
         f"We initialise both scorers from the same checkpoint for the same reason.",
-        f"One design detail is worth stating because it cost us several weeks. The "
-        f"confidence estimator must be given the cheap scorer's logits, not its probabilities. "
-        f"With probabilities the estimator saturates on confident inputs and loses the "
-        f"ordering information it needs near the decision boundary, which is precisely the "
-        f"region where routing decisions matter.",
+        "One design detail is worth stating because it cost us several weeks. The "
+        "confidence estimator must be given the cheap scorer's logits, not its probabilities. "
+        "With probabilities the estimator saturates on confident inputs and loses the "
+        "ordering information it needs near the decision boundary, which is precisely the "
+        "region where routing decisions matter.",
     ]
     return pool[:n]
 
@@ -470,14 +470,20 @@ def locate_facts(pdf_path: Path, spec: PaperSpec) -> list[dict[str, Any]]:
             "kind": "method_name",
             "question": f"What method does '{spec.title}' introduce?",
             "answer": spec.method,
-            "evidence": f"We present {spec.method}, a {spec.method_family} approach to {spec.task}.",
+            "evidence": (
+                f"We present {spec.method}, a {spec.method_family} "
+                f"approach to {spec.task}."
+            ),
         },
         {
             "fact_id": f"{spec.paper_id}-dataset",
             "kind": "dataset_name",
             "question": f"Which dataset is {spec.method} evaluated on?",
             "answer": spec.dataset,
-            "evidence": f"We evaluate on {spec.dataset}, which contains {spec.dataset_size} examples.",
+            "evidence": (
+                f"We evaluate on {spec.dataset}, which contains "
+                f"{spec.dataset_size} examples."
+            ),
         },
         {
             "fact_id": f"{spec.paper_id}-result",
@@ -499,7 +505,10 @@ def locate_facts(pdf_path: Path, spec: PaperSpec) -> list[dict[str, Any]]:
             "kind": "ablation",
             "question": f"How much {spec.metric} is lost when {spec.ablation} in {spec.method}?",
             "answer": f"{spec.ablation_delta} points of {spec.metric}",
-            "evidence": f"With {spec.ablation}, {spec.metric} falls by {spec.ablation_delta} points",
+            "evidence": (
+                f"With {spec.ablation}, {spec.metric} falls by "
+                f"{spec.ablation_delta} points"
+            ),
         },
     ]
 

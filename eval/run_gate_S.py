@@ -13,8 +13,11 @@ having if it cannot be quietly wrong:
    `embedding_model` or `reranker_version` means the two runs are not measuring
    the same thing, and a "+4 nDCG" that was really a corpus change is how a gate
    becomes a rubber stamp.
-3. **Too few queries refuses to conclude.** Below ~50 the confidence interval is
-   wider than any effect worth shipping, so a green gate means nothing.
+3. **Too few queries refuses to conclude.** Below the floor the confidence
+   interval is wider than any effect worth shipping, so a green gate means
+   nothing. The floor is `dataset.min_queries` in Track A's
+   `eval/thresholds_B.yaml` (default 50 if that file is absent), so the number
+   lives in one place and belongs to whoever owns the eval set.
 4. **A malformed dataset row fails the gate.** Skipping bad rows silently shrinks
    the eval set, making the gate easier to pass exactly when the data degrades.
 5. **Multiple metrics are Holm-corrected.** Four metrics at 5% each is not a 5%
@@ -36,6 +39,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from research_assistant.config_J import EVAL_DIR, get_settings
 from research_assistant.contracts.eval_dataset_J import EvalDataset, EvalQuery, load_eval_dataset
@@ -62,8 +67,27 @@ from .metrics.significance_S import (
 logger = logging.getLogger(__name__)
 
 MIN_QUERIES = 50
-"""Below this, the interval is wider than any effect worth shipping. A gate that
-cannot resolve the difference it is asked about should say so, not go green."""
+"""Default floor, used when the thresholds file does not set one. Below the floor
+the interval is wider than any effect worth shipping. A gate that cannot resolve
+the difference it is asked about should say so, not go green."""
+
+
+def query_floor(thresholds_path: Path | None) -> int:
+    """The minimum eval-set size, from Track A's thresholds file when it says.
+
+    A missing file, an unreadable one, or a value that is not a positive integer
+    all fall back to `MIN_QUERIES` rather than raising: a malformed thresholds file
+    must not be able to switch the floor off, and it must not crash the gate.
+    """
+    if thresholds_path is None or not thresholds_path.exists():
+        return MIN_QUERIES
+    try:
+        raw = yaml.safe_load(thresholds_path.read_text(encoding="utf-8")) or {}
+        value = raw.get("dataset", {}).get("min_queries")
+    except (OSError, yaml.YAMLError, AttributeError):
+        return MIN_QUERIES
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 \
+        else MIN_QUERIES
 
 
 class GateRefusal(RuntimeError):
@@ -185,6 +209,7 @@ def compare(
     seed: int,
     n_resamples: int,
     allow_small: bool = False,
+    min_queries: int = MIN_QUERIES,
 ) -> GateVerdict:
     """Paired comparison across every shared metric, Holm-corrected."""
     if baseline.stamps != candidate.stamps:
@@ -199,9 +224,9 @@ def compare(
         raise GateRefusal("no metrics in common between the two runs")
 
     n = len(candidate.per_query)
-    if n < MIN_QUERIES and not allow_small:
+    if n < min_queries and not allow_small:
         raise GateRefusal(
-            f"{n} queries is below the {MIN_QUERIES}-query floor. The confidence "
+            f"{n} queries is below the {min_queries}-query floor. The confidence "
             f"interval would be wider than any effect worth shipping — a green gate "
             f"here would mean nothing. Pass --allow-small to override for a smoke run."
         )
@@ -325,6 +350,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, help="Write this run's scores here.")
     parser.add_argument("--baseline", type=Path, help="Compare against this stored run.")
     parser.add_argument("--min-effect", type=float, default=0.02)
+    parser.add_argument(
+        "--thresholds",
+        type=Path,
+        default=EVAL_DIR / "thresholds_B.yaml",
+        help="Track A thresholds file. Currently supplies dataset.min_queries; "
+        "per-metric min_effect and regression tolerances are not yet consumed.",
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--n-resamples", type=int, default=1000)
     parser.add_argument("--allow-degraded", action="store_true")
@@ -378,6 +410,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             seed=args.seed,
             n_resamples=args.n_resamples,
             allow_small=args.allow_small,
+            min_queries=query_floor(args.thresholds),
         )
     except GateRefusal as exc:
         print(f"\nGATE REFUSED: {exc}")

@@ -43,7 +43,7 @@ from typing import Any
 import yaml
 
 from research_assistant import config_J
-from research_assistant.contracts.retrieval_J import RetrievedChunk
+from research_assistant.contracts.retrieval_J import Chunk, RetrievedChunk
 from research_assistant.reranker.baseline_B import BaselineRanker, RankedChunk, Ranker
 
 __all__ = [
@@ -254,7 +254,7 @@ class CrossEncoderRanker:
             self._model.eval()
         return self._model, self._tokenizer
 
-    def rank(self, query: str, chunks: list[Any]) -> list[RankedChunk]:
+    def rank(self, query: str, chunks: Sequence[Chunk]) -> list[RankedChunk]:
         """Score every (query, chunk) jointly and sort. Raises if torch is missing."""
         if not chunks:
             return []

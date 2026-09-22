@@ -12,8 +12,14 @@ services:
       dockerfile: docker/mcp_S.Dockerfile
     environment:
       RA_CORPUS_VERSION: ${RA_CORPUS_VERSION:-dev}
+      RA_RETRIEVAL_BACKEND: ${RA_RETRIEVAL_BACKEND:-auto}
       RA_JUDGE_BACKEND: ${RA_JUDGE_BACKEND:-stub}
+      RA_JUDGE_MODEL: ${RA_JUDGE_MODEL:-}
       RA_ANTHROPIC_API_KEY: ${RA_ANTHROPIC_API_KEY:-}
+      RA_GEMINI_API_KEY: ${RA_GEMINI_API_KEY:-}
+      # host.docker.internal reaches Ollama running on the host machine, not a
+      # container in this compose file - there is no 'ollama' service here.
+      RA_OLLAMA_BASE_URL: ${RA_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       RA_TRACING_ENABLED: ${RA_TRACING_ENABLED:-false}
       RA_TOOL_DEADLINE_SECONDS: ${RA_TOOL_DEADLINE_SECONDS:-10}
     ports:
@@ -27,10 +33,13 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 20s
+      start_period: 300s
     volumes:
-      # Read-only: nothing in the serving path should ever write to the corpus.
-      - ../data:/app/data:ro
+      # Read-write on purpose. This was `:ro` on the assumption that serving never
+      # writes, but Chroma's persistent store is SQLite, which needs to create
+      # journal files beside the database even for a read-only query. Untested
+      # against a real index; revisit if the store is ever opened read-only.
+      - ../data:/app/data
 
   mcp:
     build:

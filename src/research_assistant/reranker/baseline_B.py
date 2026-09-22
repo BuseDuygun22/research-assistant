@@ -52,7 +52,7 @@ class Ranker(Protocol):
 
     name: str
 
-    def rank(self, query: str, chunks: list[Chunk]) -> list[RankedChunk]:
+    def rank(self, query: str, chunks: Sequence[Chunk]) -> list[RankedChunk]:
         """Order `chunks` for `query`, best first, each with a score."""
         ...
 
@@ -87,7 +87,7 @@ class BaselineRanker:
         return f"BaselineRanker(name={self.name!r}, mode={self.mode!r})"
 
     # -- the interface ---------------------------------------------------------
-    def rank(self, query: str, chunks: list[Chunk]) -> list[RankedChunk]:
+    def rank(self, query: str, chunks: Sequence[Chunk]) -> list[RankedChunk]:
         """Return `(chunk, score)` pairs, highest score first.
 
         `query` is unused in ``fusion_order`` mode by design: the baseline is the
@@ -132,11 +132,11 @@ class BaselineRanker:
 
     # -- modes -----------------------------------------------------------------
     @staticmethod
-    def _rank_by_fusion_order(chunks: list[Chunk]) -> list[RankedChunk]:
+    def _rank_by_fusion_order(chunks: Sequence[Chunk]) -> list[RankedChunk]:
         """Identity ranking. Score is 1/(1+position) so it is strictly decreasing."""
         return [(chunk, 1.0 / (1.0 + position)) for position, chunk in enumerate(chunks)]
 
-    def _rank_by_embedding(self, query: str, chunks: list[Chunk]) -> list[RankedChunk]:
+    def _rank_by_embedding(self, query: str, chunks: Sequence[Chunk]) -> list[RankedChunk]:
         """Cosine similarity between the query and each chunk, scored independently."""
         encoder = self._load_encoder()
         texts = [chunk.text for chunk in chunks]

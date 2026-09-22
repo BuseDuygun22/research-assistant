@@ -103,14 +103,17 @@ def draft_grade(
 
 _WORD = re.compile(r"[a-z0-9][a-z0-9\-]+")
 _STOP = set("""a an the of and or to in for on with is are was were be by from at as how what which
-why does do did this that these those it its their they into when whose who whom than then""".split())
+why does do did this that these those it its their they into when whose who whom
+than then""".split())
 
 
 def _terms(text: str) -> set[str]:
     return {w for w in _WORD.findall(text.lower()) if w not in _STOP and len(w) > 2}
 
 
-def focus_view(spec: dict[str, Any], candidates: list[Chunk], per_paper: int) -> list[tuple[Chunk, str]]:
+def focus_view(
+    spec: dict[str, Any], candidates: list[Chunk], per_paper: int
+) -> list[tuple[Chunk, str]]:
     """Top chunks per target paper by query-term overlap, each with its two best sentences.
 
     This is what gets read to assign draft grades. Showing two query-focused sentences
@@ -153,7 +156,9 @@ VIEW_PER_PAPER_OPTION = typer.Option(10, help="Chunks shown per target paper in 
 def main(
     candidate_k: int = typer.Option(20, help="Fused candidate set size to pool"),
     per_arm: int = typer.Option(20, help="Top-n from each arm to pool separately"),
-    view: str = typer.Option("", help="Print the reading view for a query or range, e.g. fr001-fr010, and exit"),
+    view: str = typer.Option(
+        "", help="Print the reading view for a query or range, e.g. fr001-fr010, and exit"
+    ),
     view_per_paper: int = typer.Option(10, help="Chunks shown per target paper in --view"),
 ) -> None:
     spec_doc = json.loads(SPECS.read_text(encoding="utf-8"))
@@ -259,7 +264,10 @@ def main(
     (DRAFTS / "pool_B.jsonl").write_text(
         "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in pool_rows), encoding="utf-8")
 
-    print(f"{'query':7s} {'shape':27s} {'pool':>4s} {'g3':>3s} {'g2':>3s} {'g1':>3s} {'g0':>3s} {'g3ret':>5s}  flag")
+    print(
+        f"{'query':7s} {'shape':27s} {'pool':>4s} {'g3':>3s} {'g2':>3s} "
+        f"{'g1':>3s} {'g0':>3s} {'g3ret':>5s}  flag"
+    )
     for r in report:
         flag = "NO_GRADE3" if r["g3"] == 0 else ("BROAD" if r["g3"] > BROAD_GRADE3 else "")
         print(f"{r['query_id']:7s} {r['shape']:27s} {r['pool']:4d} {r['g3']:3d} {r['g2']:3d} "
@@ -267,7 +275,10 @@ def main(
     total = collections.Counter(row["draft_grade"] for row in pool_rows)
     print(f"\nqueries {len(queries)}  pool rows {len(pool_rows)}  "
           f"grades 3:{total[3]} 2:{total[2]} 1:{total[1]} 0:{total[0]}")
-    print(f"wrote {DRAFTS.relative_to(REPO)}/queries_draft_B.jsonl, qrels_draft_B.jsonl, pool_B.jsonl")
+    print(
+        f"wrote {DRAFTS.relative_to(REPO)}/queries_draft_B.jsonl, "
+        "qrels_draft_B.jsonl, pool_B.jsonl"
+    )
 
 
 if __name__ == "__main__":

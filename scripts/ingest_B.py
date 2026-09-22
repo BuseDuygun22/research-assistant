@@ -33,7 +33,7 @@ app = typer.Typer(add_completion=False, help="Parse, chunk, embed and index the 
 console = Console()
 
 
-class Stage(str, Enum):
+class Stage(str, Enum):  # noqa: UP042 - StrEnum changes str(), see PR discussion
     parse = "parse"
     chunk = "chunk"
     embed = "embed"
@@ -102,7 +102,11 @@ def _print_report(result: IngestionResult, cfg: dict[str, Any]) -> None:
         n_tokens = [count_tokens(k.text, enc) for k in result.chunks]
         low = [n for n in n_tokens if n < c["min_tokens"]]
         high = [n for n in n_tokens if n > c["max_tokens"]]
-        verdict = "[green]within bounds[/green]" if not low and not high else "[red]OUT OF BOUNDS[/red]"
+        verdict = (
+            "[green]within bounds[/green]"
+            if not low and not high
+            else "[red]OUT OF BOUNDS[/red]"
+        )
         console.print(
             f"bounds min_tokens={c['min_tokens']} max_tokens={c['max_tokens']}: {verdict}"
             f"  (under={len(low)} over={len(high)})"

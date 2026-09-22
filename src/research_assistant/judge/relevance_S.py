@@ -32,6 +32,7 @@ from research_assistant.contracts.judge_J import JudgeMeta, PreferencePair, Rele
 from research_assistant.contracts.retrieval_J import Chunk
 from research_assistant.llm_S import get_llm
 from research_assistant.observability.tracing_S import KIND_JUDGE, span
+from research_assistant.prompts_S import with_examples
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "relevance_S.md"
 
@@ -48,7 +49,7 @@ class _RelevanceReply(BaseModel):
 
 
 def _prompt() -> str:
-    return PROMPT_PATH.read_text(encoding="utf-8")
+    return with_examples(PROMPT_PATH.read_text(encoding="utf-8"), "relevance")
 
 
 def order_seed(query: str) -> int:

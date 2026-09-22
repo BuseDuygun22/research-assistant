@@ -33,14 +33,15 @@ import re
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from urllib.request import Request, urlopen
 
+import httpx
 import typer
 
 app = typer.Typer(add_completion=False)
 
 REPO = Path(__file__).resolve().parent.parent
 ARXIV_API = "https://export.arxiv.org/api/query"
+_HEADERS = {"User-Agent": "research-assistant-B/1.0 (stage-00 corpus fetch)"}
 NS = {"a": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
 
 # Scoped categories, not a bare keyword match. See module docstring.
@@ -53,10 +54,11 @@ def _paper_id(arxiv_id: str) -> str:
 
 def _fetch_page(query: str, start: int, max_results: int) -> ET.Element:
     url = f"{ARXIV_API}?search_query={query}&start={start}&max_results={max_results}"
-    req = Request(url, headers={"User-Agent": "research-assistant-B/1.0 (stage-00 corpus fetch)"})
-    with urlopen(req, timeout=30) as resp:
-        data = resp.read()
-    return ET.fromstring(data)
+    # httpx rather than urllib: arXiv answers urllib's requests with HTTP 406 from
+    # some networks (observed 2026-09-22) while accepting the same request from httpx.
+    resp = httpx.get(url, headers=_HEADERS, timeout=30, follow_redirects=True)
+    resp.raise_for_status()
+    return ET.fromstring(resp.content)
 
 
 def _search(n_papers: int) -> list[dict]:
@@ -127,10 +129,10 @@ def main(
         pid = _paper_id(p["arxiv_id"])
         dest = raw_dir / f"{pid}.pdf"
         print(f"[{i}/{len(papers)}] {p['arxiv_id']}  {p['title'][:60]}")
-        req = Request(p["pdf_url"], headers={"User-Agent": "research-assistant-B/1.0"})
         try:
-            with urlopen(req, timeout=60) as resp:
-                dest.write_bytes(resp.read())
+            resp = httpx.get(p["pdf_url"], headers=_HEADERS, timeout=60, follow_redirects=True)
+            resp.raise_for_status()
+            dest.write_bytes(resp.content)
         except Exception as exc:  # noqa: BLE001 -- log and continue, one bad PDF shouldn't kill the run
             print(f"    FAILED: {exc}")
             continue
@@ -152,7 +154,7 @@ def main(
         encoding="utf-8",
     )
     print(f"\ndownloaded {len(manifest_rows)}/{len(papers)} PDFs to {raw_dir}")
-    print(f"wrote manifest: data/corpus_manifest_B.jsonl")
+    print("wrote manifest: data/corpus_manifest_B.jsonl")
     if manifest_rows:
         by_cat: dict[str, int] = {}
         for r in manifest_rows:

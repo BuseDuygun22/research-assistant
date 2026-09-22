@@ -1,6 +1,5 @@
 __pycache__/
 *.pyc
-.venv/
 .env
 data/
 !data/.gitkeep
@@ -12,3 +11,5 @@ mlartifacts/
 .ruff_cache/
 src/*.egg-info/
 .eval/
+.venv*/
+mlflow.db

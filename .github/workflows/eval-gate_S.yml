@@ -34,7 +34,9 @@ jobs:
           cache: pip
 
       - name: Install
-        run: pip install -e ".[serve,agents,eval,judge,dev]"
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[serve,agents,eval,judge,dev]"
 
       - name: Restore the baseline run
         uses: actions/cache@v4
