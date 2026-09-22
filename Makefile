@@ -6,7 +6,7 @@ PY ?= .venv/Scripts/python
 Q ?= Which methods are used to handle class imbalance in fraud detection?
 
 .PHONY: help install install-train install-obs kernel lint test \
-        ingest pairs train eval gate clean-index install-all demo-corpus demo ask
+        ingest pairs train eval gate calibrate-judge clean-index install-all demo-corpus demo ask
 
 help:
 	@grep -E '^[a-z-]+:.*?##' $(MAKEFILE_LIST) | sed 's/:.*##/\t/'
@@ -54,6 +54,9 @@ clean-index:    ## drop the local vector and sparse indexes, keeps data/raw
 # serve, docker-build, gate: owned by Sude, see her track.
 gate:           ## run the promotion gate locally (Sude's runner, Buse's thresholds)
 	$(PY) -m eval.run_gate_S --thresholds eval/thresholds_B.yaml
+
+calibrate-judge: ## kappa + reliability of the judge against Buse's human qrels; exit 1 below kappa 0.5
+	$(PY) scripts/calibrate_judge_S.py --qrels eval/datasets/qrels_B.jsonl --queries eval/datasets/queries_B.jsonl
 
 # --- end to end ----------------------------------------------------------------
 demo-corpus:    ## seven synthetic PDFs into data/raw, so the pipeline runs with no download

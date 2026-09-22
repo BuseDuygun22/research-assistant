@@ -99,7 +99,8 @@ jobs:
 
       - name: Ask a question against the real index
         run: |
-          python -m research_assistant.ask_S --json --mlflow             "How does SparseLoom achieve structured sparsity?" | tee ask.json
+          python -m research_assistant.ask_S --json --mlflow \
+            "How does SparseLoom achieve structured sparsity?" | tee ask.json
           python - <<'PY'
           import json
           r = json.load(open("ask.json"))
