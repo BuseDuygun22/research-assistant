@@ -21,6 +21,7 @@ import argparse
 import json
 import os
 import re
+import sys
 import time
 from collections.abc import Sequence
 from typing import Any
@@ -184,7 +185,24 @@ def render(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _ensure_utf8_stdout() -> None:
+    """A retrieved passage or a draft can contain any Unicode character a paper
+    used (math notation, Greek letters, em dashes) - `print` must not depend on
+    the console's legacy codepage to render it. Windows terminals and redirected
+    output default to cp1252, which cannot encode most of that and raises
+    `UnicodeEncodeError` deep inside `print`, crashing an otherwise-successful
+    run. `reconfigure` is a no-op where stdout is already UTF-8 (most of Linux/
+    macOS), and it is unavailable on a stream some odd runner has replaced -
+    fall through silently rather than let a cosmetic guard break the real work.
+    """
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        pass
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    _ensure_utf8_stdout()
     ap = argparse.ArgumentParser(description="Ask the research assistant one question.")
     ap.add_argument("question", help="the research question")
     ap.add_argument("--llm", choices=["stub", "ollama", "anthropic", "gemini"], default=None)

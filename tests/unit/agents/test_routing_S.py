@@ -143,6 +143,30 @@ def test_budget_spend_is_type_specific():
     assert b.spend("escalate").steps_used == 1  # every route costs a step
 
 
+def test_discover_spends_its_own_counter_not_re_retrievals():
+    b = Budget(max_live_discoveries=1)
+    spent = b.spend("discover")
+    assert spent.live_discoveries_used == 1
+    assert spent.re_retrievals_used == 0
+    assert spent.live_discoveries_left == 0
+
+
+def test_live_discovery_budget_is_zero_unless_configured():
+    """Matches `graph_S.initial_state`: `max_live_discoveries` is only nonzero
+    when `Settings.allow_live_discovery` is true."""
+    assert Budget().max_live_discoveries == 0
+    assert Budget().live_discoveries_left == 0
+
+
+def test_discover_costs_more_than_a_local_re_retrieve():
+    """Real network I/O and a full parse/chunk/embed pass are genuinely more
+    expensive than reformulating and re-querying the local index - the cost
+    model should make discovery the last resort, not a cheap first move."""
+    from research_assistant.agents.routing_S import route_cost
+
+    assert route_cost("discover") > route_cost("re_retrieve")
+
+
 # --- uncertainty -------------------------------------------------------------
 
 
@@ -196,6 +220,33 @@ def test_insufficient_evidence_abstains_rather_than_retrying():
 def test_abstention_outranks_incompleteness():
     d = decide_route(fv(passed=True), budget=Budget(),
                      answer=av(relevance=0, sufficient=False))
+    assert d.route == "abstain"
+
+
+def test_should_abstain_tries_live_discovery_before_conceding():
+    """A full draft attempt still could not answer the question from the fixed
+    corpus. With an unspent live-discovery budget, try expanding the corpus
+    once before abstaining - this is the asymmetry the post-draft abstain path
+    used to have relative to the pre-draft one (it never retried anything,
+    budget or not): now both paths get one real chance to do something about
+    it before giving up."""
+    d = decide_route(fv(passed=True), budget=Budget(max_live_discoveries=1),
+                     answer=av(sufficient=False))
+    assert d.route == "discover"
+    assert d.trigger == "live_discovery_attempt"
+
+
+def test_should_abstain_still_abstains_once_live_discovery_is_spent():
+    d = decide_route(
+        fv(passed=True),
+        budget=Budget(max_live_discoveries=1, live_discoveries_used=1),
+        answer=av(sufficient=False),
+    )
+    assert d.route == "abstain"
+
+
+def test_should_abstain_ignores_live_discovery_when_off_by_default():
+    d = decide_route(fv(passed=True), budget=Budget(), answer=av(sufficient=False))
     assert d.route == "abstain"
 
 

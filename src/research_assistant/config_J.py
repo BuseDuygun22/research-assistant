@@ -196,6 +196,30 @@ class Settings(BaseSettings):
         "know what a given number means.",
     )
 
+    # --- live discovery (opt-in corpus expansion) ---------------------------
+    allow_live_discovery: bool = Field(
+        False,
+        description="When the fixed corpus cannot answer a question, search arXiv "
+        "live, ingest what it finds into a session-scoped index, and try again "
+        "before abstaining. Off by default: the closed corpus is what makes every "
+        "citation trustworthy by construction, and this trades some of that "
+        "guarantee for coverage. See retrieval/live_discovery_S.py.",
+    )
+    max_live_discoveries: int = Field(
+        1,
+        ge=0,
+        le=3,
+        description="Live-discovery attempts per run. Only spent when "
+        "allow_live_discovery is true - the budget is forced to 0 otherwise, so a "
+        "stray nonzero value here cannot enable the feature by accident.",
+    )
+    live_discovery_max_papers: int = Field(
+        8,
+        ge=1,
+        le=20,
+        description="Candidate papers fetched and indexed per discovery attempt.",
+    )
+
     # --- observability ------------------------------------------------------
     tracing_enabled: bool = False
     langfuse_public_key: str | None = None

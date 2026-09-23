@@ -46,14 +46,18 @@ def initial_state(question: str, *, run_id: str | None = None) -> AgentState:
         budget=Budget(
             max_rewrites=s.max_rewrites,
             max_re_retrievals=s.max_re_retrievals,
+            # Forced to 0 when the feature is off, so a nonzero value left over
+            # in config cannot enable live discovery by accident.
+            max_live_discoveries=s.max_live_discoveries if s.allow_live_discovery else 0,
             max_steps=s.max_steps,
         ),
     )
 
 
 def gather(state: AgentState) -> AgentState:
-    """Retrieve, then triage — retrying retrieval while triage says the evidence
-    is unusable and budget remains.
+    """Retrieve, then triage — retrying retrieval (local re-query, then, if
+    enabled and unspent, one live discovery attempt) while triage says the
+    evidence is unusable and budget remains.
 
     Returns when the evidence is worth writing from, or when the run has ended
     (abstain / escalate); callers check `is_terminal`. Bounded twice: by the
@@ -62,7 +66,7 @@ def gather(state: AgentState) -> AgentState:
     state = researcher(state)
     for _ in range(state.budget.max_steps + 1):
         state = triage(state)
-        if state.decisions[-1].route != "re_retrieve":
+        if state.decisions[-1].route not in ("re_retrieve", "discover"):
             return state
         state = researcher(state)
     return state
@@ -94,7 +98,7 @@ def run(question: str, *, run_id: str | None = None) -> tuple[AgentState, Handov
                 break
             if decision.route == "rewrite":
                 state = writer(state)
-            elif decision.route == "re_retrieve":
+            elif decision.route in ("re_retrieve", "discover"):
                 state = gather(state)
                 if state.is_terminal:
                     break

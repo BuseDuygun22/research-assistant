@@ -15,16 +15,20 @@ rather than being regenerated and given a fresh chance to break.
 from __future__ import annotations
 
 import hashlib
+import logging
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from research_assistant.config_J import get_settings
 from research_assistant.judge.triage_S import describe_conflicts
-from research_assistant.llm_S import get_llm
+from research_assistant.llm_S import LLMError, get_llm
 from research_assistant.observability.tracing_S import KIND_AGENT, span
 from research_assistant.prompts_S import with_examples
 
+from ..routing_S import RoutingDecision
 from ..state_S import AgentState, ClaimSpan, Draft
+
+logger = logging.getLogger(__name__)
 
 WRITE_SYSTEM = (
     "You write a short, cited answer to a research question using ONLY the "
@@ -121,7 +125,24 @@ def writer(state: AgentState) -> AgentState:
                 user += "\n\nCONFLICTS:\n" + describe_conflicts(state.assessment)
             system = with_examples(WRITE_SYSTEM, "write")
 
-        out = get_llm().complete_json(system=system, user=user, schema=_DraftOut)
+        try:
+            out = get_llm().complete_json(system=system, user=user, schema=_DraftOut)
+        except (LLMError, ValueError) as exc:
+            # A network error, an expired key, a rate limit, or a retired model id
+            # - none of that is a statement about the evidence or the question, and
+            # must not be allowed to crash the whole run. Escalating (not
+            # abstaining) keeps that distinction: abstain means "the corpus does
+            # not have this", which is not what happened here.
+            logger.exception("writer LLM call failed; escalating rather than crashing")
+            return state.record(
+                RoutingDecision(
+                    "escalate",
+                    "llm_backend_unavailable",
+                    f"the configured LLM backend failed while writing a draft "
+                    f"({type(exc).__name__}: {exc})",
+                    state.budget,
+                )
+            )
         revision = len(state.drafts)
         draft_id = _draft_id(out.draft, revision)
         sp.set(draft_id=draft_id, n_claims=len(out.claims))

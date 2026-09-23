@@ -26,7 +26,7 @@ from research_assistant.contracts.judge_J import (
     FaithfulnessVerdict,
 )
 
-Route = Literal["accept", "rewrite", "re_retrieve", "escalate", "abstain"]
+Route = Literal["accept", "rewrite", "re_retrieve", "escalate", "abstain", "discover"]
 
 # Machine-readable reason codes. Logged on every decision so an unexpected route
 # can be explained after the fact without re-running the graph.
@@ -47,6 +47,8 @@ Trigger = Literal[
     "evidence_unusable",
     "evidence_ok",
     "evidence_conflicting",
+    "llm_backend_unavailable",
+    "live_discovery_attempt",
 ]
 
 NON_TERMINAL_TRIGGERS: frozenset[str] = frozenset(
@@ -58,6 +60,7 @@ NON_TERMINAL_TRIGGERS: frozenset[str] = frozenset(
         "evidence_ok",
         "evidence_conflicting",
         "evidence_unusable",
+        "live_discovery_attempt",
     }
 )
 """Triggers that continue the loop rather than ending it.
@@ -88,6 +91,11 @@ ROUTE_COST: dict[str, float] = {
     # Retrieval round + cross-encoder rerank over the candidate pool + triage
     # call + the writer call that follows. The reranker dominates.
     "re_retrieve": 4.0,
+    # Real network I/O (arXiv search + N PDF downloads), a full parse/chunk/embed
+    # pass, then the same retrieval+triage+writer cost `re_retrieve` already
+    # carries. An order of magnitude past a local re-query, deliberately: it
+    # should be the last resort, not a cheap first move.
+    "discover": 20.0,
 }
 
 HUMAN_COST = 50.0
@@ -118,10 +126,12 @@ class Budget:
 
     rewrites_used: int = 0
     re_retrievals_used: int = 0
+    live_discoveries_used: int = 0
     steps_used: int = 0
     cost_spent: float = 0.0
     max_rewrites: int = 3
     max_re_retrievals: int = 2
+    max_live_discoveries: int = 0  # off unless Settings.allow_live_discovery opts in
     max_steps: int = 12
 
     def spend(self, route: Route) -> Budget:
@@ -130,10 +140,12 @@ class Budget:
         return Budget(
             rewrites_used=self.rewrites_used + (1 if route == "rewrite" else 0),
             re_retrievals_used=self.re_retrievals_used + (1 if route == "re_retrieve" else 0),
+            live_discoveries_used=self.live_discoveries_used + (1 if route == "discover" else 0),
             steps_used=self.steps_used + 1,
             cost_spent=self.cost_spent + route_cost(route),
             max_rewrites=self.max_rewrites,
             max_re_retrievals=self.max_re_retrievals,
+            max_live_discoveries=self.max_live_discoveries,
             max_steps=self.max_steps,
         )
 
@@ -144,6 +156,10 @@ class Budget:
     @property
     def re_retrievals_left(self) -> int:
         return max(0, self.max_re_retrievals - self.re_retrievals_used)
+
+    @property
+    def live_discoveries_left(self) -> int:
+        return max(0, self.max_live_discoveries - self.live_discoveries_used)
 
     @property
     def steps_left(self) -> int:
@@ -157,8 +173,10 @@ class Budget:
         automated path could still cost approaches what a human costs, the
         cheap move is to stop pretending and escalate now.
         """
-        return self.rewrites_left * route_cost("rewrite") + (
-            self.re_retrievals_left * route_cost("re_retrieve")
+        return (
+            self.rewrites_left * route_cost("rewrite")
+            + self.re_retrievals_left * route_cost("re_retrieve")
+            + self.live_discoveries_left * route_cost("discover")
         )
 
     def should_escalate_early(self, *, human_cost: float = HUMAN_COST) -> bool:
@@ -195,6 +213,7 @@ class RoutingDecision:
             "accept": "END",
             "rewrite": "writer",
             "re_retrieve": "researcher",
+            "discover": "researcher",
             "escalate": "flag_for_human",
             "abstain": "flag_for_human",
         }[self.route]
@@ -223,8 +242,11 @@ def decide_route(
        unsure about and a confident pass are different events and must not take
        the same edge.
     4. **Abstention** — if the evidence cannot answer the question, neither
-       rewriting nor re-retrieving helps; more retrieval over a corpus that lacks
-       the answer just produces a more confident wrong answer.
+       rewriting nor re-retrieving *the fixed corpus* helps; more retrieval over
+       a corpus that lacks the answer just produces a more confident wrong
+       answer. If live discovery is enabled and unspent, one attempt to expand
+       the corpus itself happens before conceding — a fixed corpus can be wrong
+       in a way a wider search is not.
     5. **Faithfulness** — grounded before useful. An ungrounded draft is repaired
        before anyone asks whether it was on topic, because judging the relevance
        of unsupported prose is meaningless.
@@ -287,6 +309,14 @@ def decide_route(
 
     # 4. The corpus cannot answer this. Abstain rather than retrieve harder.
     if answer is not None and answer.should_abstain:
+        if budget.live_discoveries_left > 0:
+            return RoutingDecision(
+                "discover",
+                "live_discovery_attempt",
+                "a full draft attempt still could not answer the question from the "
+                "fixed corpus; attempting live discovery before abstaining",
+                budget,
+            )
         return RoutingDecision(
             "abstain",
             "evidence_insufficient",
@@ -375,7 +405,7 @@ def decide_route(
 
 # --- pre-generation triage ----------------------------------------------------
 
-EvidenceRoute = Literal["write", "re_retrieve", "abstain", "escalate"]
+EvidenceRoute = Literal["write", "re_retrieve", "discover", "abstain", "escalate"]
 
 
 @dataclass(frozen=True)
@@ -392,6 +422,7 @@ class EvidenceDecision:
         return {
             "write": "writer",
             "re_retrieve": "researcher",
+            "discover": "researcher",
             "abstain": "flag_for_human",
             "escalate": "flag_for_human",
         }[self.route]
@@ -452,6 +483,15 @@ def decide_evidence_route(
                 "evidence_unusable",
                 f"retrieved passages cannot answer the question ({assessment.rationale}); "
                 "retrieving again before spending a writer call on them",
+                budget,
+            )
+        if budget.live_discoveries_left > 0:
+            return EvidenceDecision(
+                "discover",
+                "live_discovery_attempt",
+                f"local corpus exhausted for this question ({assessment.rationale}); "
+                "the local re-retrieval budget is spent, attempting live discovery "
+                "before abstaining",
                 budget,
             )
         return EvidenceDecision(

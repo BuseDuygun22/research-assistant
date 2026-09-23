@@ -534,6 +534,52 @@ The notebooks in `notebooks/` hold the reasoning and the rejected alternatives f
 
 Requires Python 3.11. MLflow runs are stored in `mlflow.db` (SQLite); browse them with `make mlflow`. MLflow 3.16 and later refuse the old file store, so the repository uses SQLite.
 
+### Reproduce this pipeline end to end
+
+One sequence, clone to a real cited answer from the real corpus. Every command below has been run against this exact repository state.
+
+```bash
+# 1. Clone and set up a Python 3.11 environment
+git clone https://github.com/BuseDuygun22/research-assistant.git
+cd research-assistant
+python -m venv .venv
+source .venv/bin/activate                 # Windows: .venv\Scripts\activate
+pip install -e ".[serve,agents,judge,eval,dev]"
+
+# 2. Config (every RA_* setting has a safe default; .env is gitignored)
+cp .env.example .env
+
+# 3. Verify the install: hermetic tests, stub LLM + stub retrieval, no network
+python -m pytest -q
+ruff check src eval tests scripts
+mypy src eval
+
+# 4. Fetch the real 30-paper corpus and build the real index
+#    (parse -> section-aware chunk -> bge-small-en-v1.5 embed -> Chroma + BM25)
+python scripts/fetch_arxiv_fraud_B.py --n-papers 30
+python scripts/ingest_B.py --stage all
+
+# 5. Ask a real question against the real index (free: the stub judge by default)
+python -m research_assistant.ask_S "Which methods handle class imbalance in fraud detection?"
+
+# 6. Optional: answer with a real local model instead of the stub judge
+#    (Ollama, from ollama.com; ~4.7 GB download, fully offline afterward)
+ollama pull qwen2.5:7b-instruct
+python -m research_assistant.ask_S --llm ollama --model qwen2.5:7b-instruct \
+    "Which methods handle class imbalance in fraud detection?"
+
+# 7. Optional: serve the same pipeline as HTTP + MCP tools
+python scripts/serve_S.py api &                        # FastAPI on :8000
+python scripts/serve_S.py mcp                           # MCP server, stdio transport
+curl -s localhost:8000/ready                             # "ok" once the index is warm
+```
+
+No download, no wait: `make demo` runs steps 4-5 against seven synthetic PDFs instead of the real corpus, so the whole pipeline is checkable in well under a minute. This is also what CI's `pipeline` job runs on every push.
+
+### Modular reference
+
+The same steps, explained individually — useful when you only need one piece (just the tests, just the server, just a different backend) rather than the full sequence above.
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
@@ -644,6 +690,18 @@ Settings are read from the environment (prefix `RA_`) and from `.env`. Corpus an
 | `RA_MCP_TRANSPORT` | `stdio` | `stdio` or `sse`. |
 | `RA_TRACING_ENABLED` | `false` | Enable Langfuse tracing. |
 | `RA_CORPUS_VERSION` / `RA_EMBEDDING_MODEL` | from `configs/` | Default to the values ingestion actually used, so they cannot silently drift. |
+| `RA_ALLOW_LIVE_DISCOVERY` | `false` | Opt-in: when the fixed corpus cannot answer, search arXiv live, index what it finds, and try once more before abstaining. See below. |
+| `RA_MAX_LIVE_DISCOVERIES` | `1` | Live-discovery attempts per run. Only spent when the flag above is true. |
+| `RA_LIVE_DISCOVERY_MAX_PAPERS` | `8` | Candidate papers fetched per discovery attempt. |
+
+**Live discovery (opt-in corpus expansion).** By default this system only ever answers from the fixed, audited 30-paper corpus — that closed boundary is what makes every citation trustworthy by construction (every cited chunk went through the same parse → chunk → embed pipeline as every other, not a paper grabbed off the web on the spot). Setting `RA_ALLOW_LIVE_DISCOVERY=true` trades some of that guarantee for coverage: when local retrieval is exhausted and the evidence still cannot answer the question, the researcher searches arXiv live (same category scope as the static corpus), downloads and indexes a handful of new candidates into a session-scoped index (`data/live_discovery/<run_id>/`, never the audited `papers_v2` collection), and tries once more before abstaining. Every live-discovered citation's venue is suffixed `[live discovery]` so a reader can tell it apart. Real network I/O and a real embedding pass make this the most expensive route in the budget (`route_cost("discover") = 20.0` vs. `4.0` for a local re-retrieval) — it is meant to be the last resort, not the first move.
+
+```bash
+RA_ALLOW_LIVE_DISCOVERY=true python -m research_assistant.ask_S --llm ollama \
+    --model qwen2.5:7b-instruct "a question the fixed corpus likely cannot answer"
+```
+
+One caveat worth knowing before relying on this in a shared deployment: a successful discovery calls `set_backend()` with a backend that unions the fixed and live indexes, which is a process-wide change for the rest of that process's life (see `retrieval/live_discovery_S.py`). Fine for the `ask` CLI (one question per process) and a single-developer local server session; not safe for a shared multi-tenant deployment, where one user's discovery would leak into another's queries.
 
 ---
 

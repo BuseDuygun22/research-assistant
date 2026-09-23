@@ -19,10 +19,11 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from research_assistant.config_J import get_settings
+from research_assistant.config_J import Settings, get_settings
 from research_assistant.contracts.mcp_tools_J import SearchPapersInput
 from research_assistant.llm_S import LLMError, get_llm
 from research_assistant.mcp_server.api_S import search_papers
@@ -119,10 +120,45 @@ def reformulate(state: AgentState) -> str:
     return state.question
 
 
+def _attempt_live_discovery(state: AgentState, settings: Settings, sp: Any) -> None:
+    """Search arXiv live, index what it finds, and union it into the process's
+    retrieval backend for the rest of this run. Only reached when routing chose
+    `discover` (local budget exhausted, live discovery opted in and unspent) —
+    see `retrieval/live_discovery_S` for what the union does and does not
+    isolate. Never raises: a failed attempt leaves the existing backend bound,
+    the normal search below still runs, and the spent budget correctly stops
+    discovery being offered again this run."""
+    from research_assistant.mcp_server.backend_S import get_backend, set_backend
+    from research_assistant.retrieval.live_discovery_S import UnionRetrieval, discover
+
+    outcome = discover(
+        state.question,
+        run_id=state.run_id,
+        max_papers=settings.live_discovery_max_papers,
+    )
+    sp.set(live_discovery_papers=len(outcome.papers))
+    if outcome.found_anything:
+        logger.info(
+            "live discovery: %d paper(s) added for run %s: %s",
+            len(outcome.papers),
+            state.run_id,
+            [p.arxiv_id for p in outcome.papers],
+        )
+        assert outcome.backend is not None  # found_anything guarantees this
+        set_backend(UnionRetrieval(get_backend(), outcome.backend))
+    else:
+        logger.info(
+            "live discovery found nothing usable for run %s (%s)", state.run_id, outcome.error
+        )
+
+
 def researcher(state: AgentState) -> AgentState:
     """Retrieve evidence for the question, or for what the editor said is missing."""
     settings = get_settings()
     with span("node.researcher", KIND_AGENT, round=len(state.queries_issued)) as sp:
+        if state.decisions and state.decisions[-1].route == "discover":
+            _attempt_live_discovery(state, settings, sp)
+
         query = reformulate(state)
         result = search_papers(
             SearchPapersInput(query=query, top_k=settings.writer_top_k, use_reranker=True)

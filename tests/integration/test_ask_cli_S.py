@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import io
 import json
+import sys
 
 import pytest
 
-from research_assistant.ask_S import EXIT_CODES, ask, main, render, resolve_citations
+from research_assistant.ask_S import (
+    EXIT_CODES,
+    _ensure_utf8_stdout,
+    ask,
+    main,
+    render,
+    resolve_citations,
+)
 from research_assistant.llm_S import set_llm
 from research_assistant.mcp_server.backend_S import set_backend
 
@@ -56,3 +65,34 @@ def test_mlflow_logging(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
     out = json.loads(capsys.readouterr().out)
     assert code == EXIT_CODES[out["outcome"]]
     assert out["mlflow_run_id"]
+
+
+def test_ensure_utf8_stdout_reconfigures_a_legacy_codepage_stream(monkeypatch) -> None:
+    """Reproduces a real crash: retrieved paper text can contain any Unicode
+    character (math notation, Greek letters), and `print` on a Windows console
+    or redirected file defaults to cp1252, which cannot encode most of it -
+    `UnicodeEncodeError` deep inside `print` then crashes an otherwise-successful
+    run. This is exactly what happened live: a chunk containing the mathematical
+    italic capital H (U+1D43B) crashed `ask_S.py --json > out.txt` on Windows."""
+    legacy = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", legacy)
+
+    with pytest.raises(UnicodeEncodeError):
+        print("\U0001d43b")  # reproduces the crash before the fix runs
+
+    _ensure_utf8_stdout()
+    assert sys.stdout.encoding.lower().replace("-", "") == "utf8"
+    print("\U0001d43b")  # must not raise now
+
+
+def test_ensure_utf8_stdout_is_a_harmless_noop_on_a_stream_without_reconfigure(
+    monkeypatch,
+) -> None:
+    """A stream some odd runner substituted might not support `reconfigure` at
+    all - the guard must not itself crash the run it exists to protect."""
+
+    class NoReconfigure:
+        pass
+
+    monkeypatch.setattr(sys, "stdout", NoReconfigure())
+    _ensure_utf8_stdout()  # must not raise

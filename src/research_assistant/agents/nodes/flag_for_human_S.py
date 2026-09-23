@@ -30,6 +30,13 @@ NEXT_STEPS: dict[str, str] = {
         "The rubric failed the draft without itemising why, or the judge did not "
         "return a usable verdict. Check the judge prompt and the rubric together."
     ),
+    "llm_backend_unavailable": (
+        "The configured LLM backend (RA_JUDGE_BACKEND) failed to produce a draft - "
+        "a network error, an expired or missing API key, a rate limit, or a "
+        "retired model id (see the run log for the exact error). This is an "
+        "infrastructure failure, not a quality signal about the evidence or the "
+        "question: fix the backend and re-ask, do not treat this as an abstention."
+    ),
     "low_faithfulness_confidence": (
         "The judge was unsure. Hand-label this one — cases near the rubric "
         "boundary are the most informative additions to the calibration set."

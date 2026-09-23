@@ -18,7 +18,7 @@ from research_assistant.agents.nodes.researcher_S import is_novel, researcher
 from research_assistant.agents.nodes.writer_S import context_window, writer
 from research_assistant.agents.routing_S import Budget, RoutingDecision
 from research_assistant.agents.state_S import AgentState
-from research_assistant.llm_S import set_llm
+from research_assistant.llm_S import LLMError, set_llm
 from research_assistant.mcp_server.backend_S import set_backend
 
 
@@ -186,6 +186,40 @@ def test_judge_failure_escalates_rather_than_shipping():
     set_llm(ScriptedLLM({}))  # any judge call raises AssertionError -> not caught
     with pytest.raises(AssertionError):
         editor(state)
+
+
+class DeadBackend:
+    """A judge/writer client that always fails the way a real backend outage
+    does - a network error, an expired key, or a retired model id all surface
+    through `llm_S` as `LLMError` (see `OllamaLLM`, `GeminiLLM`, `AnthropicLLM`).
+    Live example this reproduces: Gemini retiring `gemini-2.5-flash` mid-project
+    and every call 404ing with 'no longer available to new users'."""
+
+    model = "dead-backend"
+
+    def complete(self, system: str, user: str, max_tokens: int = 1024) -> str:
+        raise LLMError("simulated backend outage")
+
+    def complete_json(
+        self, system: str, user: str, schema: type[BaseModel], max_tokens: int = 1024
+    ) -> BaseModel:
+        raise LLMError("simulated backend outage")
+
+
+def test_backend_outage_escalates_rather_than_crashing_the_run():
+    """The whole point: a dead LLM backend must not take down the process a
+    real user is running `ask_S` in. Triage degrades gracefully already
+    (existing behaviour: LLMError -> label='partial', confidence=0.0); the
+    writer must do the same rather than propagating the exception."""
+    set_llm(DeadBackend())
+    state, handover = run("reciprocal rank fusion")
+
+    assert state.outcome == "escalated"
+    assert state.decisions[-1].trigger == "llm_backend_unavailable"
+    assert handover is not None
+    assert handover.trigger == "llm_backend_unavailable"
+    assert "backend" in handover.next_step.lower()
+    assert "not a quality signal" in handover.next_step.lower()  # not read as an abstention
 
 
 def _verdict(passed: bool):

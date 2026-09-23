@@ -186,6 +186,49 @@ def test_partial_evidence_is_written_from():
     assert decide_evidence_route(assessment("partial"), budget=Budget()).route == "write"
 
 
+# --- live discovery (opt-in corpus expansion, RA_ALLOW_LIVE_DISCOVERY) --------
+
+
+def test_insufficient_with_local_budget_spent_tries_live_discovery_first():
+    """Local re-retrieval exhausted, but a live-discovery attempt is still
+    unspent: try expanding the corpus before conceding."""
+    d = decide_evidence_route(
+        assessment("insufficient"),
+        budget=Budget(re_retrievals_used=2, max_re_retrievals=2, max_live_discoveries=1),
+    )
+    assert d.route == "discover"
+    assert d.trigger == "live_discovery_attempt"
+    assert d.node == "researcher"
+
+
+def test_insufficient_still_abstains_once_live_discovery_is_also_spent():
+    """Both budgets spent: this is the exact case
+    `test_insufficient_with_no_budget_abstains_not_escalates` covers, now also
+    proven with live discovery enabled but exhausted - the feature must not
+    change the terminal outcome once there is truly nothing left to try."""
+    d = decide_evidence_route(
+        assessment("insufficient"),
+        budget=Budget(
+            re_retrievals_used=2,
+            max_re_retrievals=2,
+            live_discoveries_used=1,
+            max_live_discoveries=1,
+        ),
+    )
+    assert d.route == "abstain"
+    assert d.trigger == "evidence_insufficient"
+
+
+def test_live_discovery_is_off_by_default():
+    """`Budget()`'s default `max_live_discoveries=0` - the feature must never
+    activate for a caller who did not opt in, regardless of how exhausted the
+    other budgets are."""
+    d = decide_evidence_route(
+        assessment("insufficient"), budget=Budget(re_retrievals_used=2, max_re_retrievals=2)
+    )
+    assert d.route == "abstain"
+
+
 # --- robustness ----------------------------------------------------------------
 
 

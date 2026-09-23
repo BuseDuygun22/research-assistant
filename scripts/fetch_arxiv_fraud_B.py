@@ -12,6 +12,12 @@ that a bare keyword search would otherwise pull in, per stage 00's rule that the
 domain boundary has to be written down and defended, not left to whatever a search
 term happens to match.
 
+The arXiv search/download mechanics live in `retrieval/arxiv_source_B.py`, shared
+with the agent's opt-in live-discovery path (`RA_ALLOW_LIVE_DISCOVERY`) — this
+script is the offline, human-run, "build the whole corpus once" use of the same
+primitives; live discovery is the online, agent-run, "find a few more papers for
+this one question" use of them.
+
 Outputs:
   data/raw/<paper_id>.pdf              -- the actual PDF, parsed by stage 01
   data/corpus_manifest_B.jsonl         -- one row per paper (stage-00 manifest)
@@ -27,84 +33,30 @@ Usage:
 
 from __future__ import annotations
 
-import hashlib
 import json
-import re
+import sys
 import time
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
-import httpx
 import typer
+
+SRC = Path(__file__).resolve().parents[1] / "src"
+if str(SRC) not in sys.path:  # pragma: no cover - import path plumbing
+    sys.path.insert(0, str(SRC))
+
+from research_assistant.retrieval.arxiv_source_B import (  # noqa: E402
+    DEFAULT_CATEGORIES as CATEGORIES,
+)
+from research_assistant.retrieval.arxiv_source_B import (  # noqa: E402
+    download_pdf,
+)
+from research_assistant.retrieval.arxiv_source_B import (  # noqa: E402
+    search as search_arxiv,
+)
 
 app = typer.Typer(add_completion=False)
 
 REPO = Path(__file__).resolve().parent.parent
-ARXIV_API = "https://export.arxiv.org/api/query"
-_HEADERS = {"User-Agent": "research-assistant-B/1.0 (stage-00 corpus fetch)"}
-NS = {"a": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
-
-# Scoped categories, not a bare keyword match. See module docstring.
-CATEGORIES = ["cs.LG", "cs.CR", "cs.AI", "stat.ML", "q-fin.RM", "q-fin.ST"]
-
-
-def _paper_id(arxiv_id: str) -> str:
-    return hashlib.sha1(arxiv_id.encode()).hexdigest()[:10]
-
-
-def _fetch_page(query: str, start: int, max_results: int) -> ET.Element:
-    url = f"{ARXIV_API}?search_query={query}&start={start}&max_results={max_results}"
-    # httpx rather than urllib: arXiv answers urllib's requests with HTTP 406 from
-    # some networks (observed 2026-09-22) while accepting the same request from httpx.
-    resp = httpx.get(url, headers=_HEADERS, timeout=30, follow_redirects=True)
-    resp.raise_for_status()
-    return ET.fromstring(resp.content)
-
-
-def _search(n_papers: int) -> list[dict]:
-    cat_clause = "+OR+".join(f"cat:{c}" for c in CATEGORIES)
-    query = f"%28all:%22fraud+detection%22%29+AND+%28{cat_clause}%29"
-
-    papers, start, page_size = [], 0, 50
-    seen_ids = set()
-    while len(papers) < n_papers and start < 300:  # hard stop against a pathological loop
-        root = _fetch_page(query, start, page_size)
-        entries = root.findall("a:entry", NS)
-        if not entries:
-            break
-        for e in entries:
-            arxiv_id = e.find("a:id", NS).text.rsplit("/", 1)[-1]
-            arxiv_id = re.sub(r"v\d+$", "", arxiv_id)  # strip version suffix
-            if arxiv_id in seen_ids:
-                continue
-            seen_ids.add(arxiv_id)
-            title = " ".join(e.find("a:title", NS).text.split())
-            summary = " ".join(e.find("a:summary", NS).text.split())
-            published = e.find("a:published", NS).text
-            year = int(published[:4])
-            pdf_link = None
-            for link in e.findall("a:link", NS):
-                if link.get("title") == "pdf":
-                    pdf_link = link.get("href")
-            if pdf_link is None:
-                continue
-            primary_cat = e.find("arxiv:primary_category", NS)
-            category = primary_cat.get("term") if primary_cat is not None else ""
-            papers.append(
-                dict(
-                    arxiv_id=arxiv_id,
-                    title=title,
-                    summary=summary,
-                    year=year,
-                    category=category,
-                    pdf_url=pdf_link if pdf_link.endswith(".pdf") else pdf_link + ".pdf",
-                )
-            )
-            if len(papers) >= n_papers:
-                break
-        start += page_size
-        time.sleep(3)  # arXiv API etiquette: no more than one request per 3 seconds
-    return papers
 
 
 @app.command()
@@ -116,23 +68,21 @@ def main(
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"searching arXiv: 'fraud detection' restricted to {CATEGORIES}")
-    papers = _search(n_papers)
+    papers = search_arxiv("%22fraud+detection%22", max_results=n_papers, categories=CATEGORIES)
     print(f"found {len(papers)} candidates")
 
     if dry_run:
         for p in papers:
-            print(f"  {p['arxiv_id']}  [{p['category']}]  {p['title'][:70]}")
+            print(f"  {p.arxiv_id}  [{p.category}]  {p.title[:70]}")
         return
 
     manifest_rows = []
     for i, p in enumerate(papers, start=1):
-        pid = _paper_id(p["arxiv_id"])
+        pid = p.paper_id
         dest = raw_dir / f"{pid}.pdf"
-        print(f"[{i}/{len(papers)}] {p['arxiv_id']}  {p['title'][:60]}")
+        print(f"[{i}/{len(papers)}] {p.arxiv_id}  {p.title[:60]}")
         try:
-            resp = httpx.get(p["pdf_url"], headers=_HEADERS, timeout=60, follow_redirects=True)
-            resp.raise_for_status()
-            dest.write_bytes(resp.content)
+            download_pdf(p, dest)
         except Exception as exc:  # noqa: BLE001 -- log and continue, one bad PDF shouldn't kill the run
             print(f"    FAILED: {exc}")
             continue
@@ -140,14 +90,14 @@ def main(
             {
                 "paper_id": pid,
                 "filename": f"{pid}.pdf",
-                "title": p["title"],
-                "year": p["year"],
-                "venue": f"arXiv:{p['arxiv_id']} ({p['category']})",
-                "why_included": f"matched 'fraud detection' in {p['category']}; abstract: "
-                f"{p['summary'][:180]}...",
+                "title": p.title,
+                "year": p.year,
+                "venue": f"arXiv:{p.arxiv_id} ({p.category})",
+                "why_included": f"matched 'fraud detection' in {p.category}; abstract: "
+                f"{p.summary[:180]}...",
             }
         )
-        time.sleep(3)  # arXiv download etiquette
+        time.sleep(3)  # arXiv download etiquette: no more than one request per 3 seconds
 
     (REPO / "data" / "corpus_manifest_B.jsonl").write_text(
         "\n".join(json.dumps(r, ensure_ascii=False) for r in manifest_rows) + "\n",
